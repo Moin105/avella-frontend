@@ -60,7 +60,10 @@ const BookingsView = () => {
       setLoading(true);
       const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       const response = await axios.get(`${API_URL}/appointments`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
       });
       setAppointments(response.data);
     } catch (error) {
@@ -76,7 +79,10 @@ const BookingsView = () => {
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       const response = await axios.get(`${API_URL}/services`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
       });
       setServices(response.data);
     } catch (error) {
@@ -90,7 +96,10 @@ const BookingsView = () => {
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       const response = await axios.get(`${API_URL}/barbers`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
       });
       setBarbers(response.data);
     } catch (error) {
@@ -167,10 +176,10 @@ const BookingsView = () => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(apt => 
-        apt.client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.client.phone.includes(searchTerm) ||
-        apt.service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.barber.name.toLowerCase().includes(searchTerm.toLowerCase())
+        (apt.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (apt.client?.phone?.includes(searchTerm)) ||
+        (apt.service?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (apt.barber?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -199,6 +208,7 @@ const BookingsView = () => {
   };
 
   const getChannelIcon = (channel) => {
+    if (!channel) return <Globe className="h-4 w-4" />;
     switch (channel.toLowerCase()) {
       case 'call': return <Phone className="h-4 w-4" />;
       case 'sms': return <MessageSquare className="h-4 w-4" />;
@@ -209,6 +219,7 @@ const BookingsView = () => {
   };
 
   const formatChannelName = (channel) => {
+    if (!channel) return 'Unknown';
     switch (channel.toLowerCase()) {
       case 'front_desk': return 'Front Desk';
       case 'call': return 'Call';
@@ -315,32 +326,32 @@ const BookingsView = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAppointments.map((appointment) => (
+              {filteredAppointments && filteredAppointments.length > 0 ? filteredAppointments.map((appointment) => (
                 <tr key={appointment.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{appointment.time}</div>
-                    <div className="text-sm text-gray-500">{appointment.date}</div>
+                    <div className="text-sm font-medium text-gray-900">{appointment?.time || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">{appointment?.date || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{appointment.client.name}</div>
-                    <div className="text-sm text-gray-500">{appointment.client.phone}</div>
+                    <div className="text-sm font-medium text-gray-900">{appointment.client?.name || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">{appointment.client?.phone || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{appointment.service.name}</div>
-                    <div className="text-sm text-gray-500">{appointment.service.duration}min</div>
+                    <div className="text-sm text-gray-900">{appointment.service?.name || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">{appointment.service?.duration_minutes || appointment.service?.duration || 0}min</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {appointment.barber.name}
+                    {appointment.barber?.name || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                      {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment?.status)}`}>
+                      {appointment?.status ? appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1) : 'Unknown'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      {getChannelIcon(appointment.channel)}
-                      <span>{formatChannelName(appointment.channel)}</span>
+                      {getChannelIcon(appointment?.channel)}
+                      <span>{formatChannelName(appointment?.channel)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -357,17 +368,18 @@ const BookingsView = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center">
+                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">No appointments found</p>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
-        {filteredAppointments.length === 0 && (
-          <div className="text-center py-12">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No appointments found matching your criteria</p>
-          </div>
-        )}
       </div>
 
       {/* Booking Modal */}
@@ -434,11 +446,13 @@ const BookingsView = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Select a service</option>
-                    {services.map(service => (
+                    {services && services.length > 0 ? services.map(service => (
                       <option key={service.id} value={service.id}>
-                        {service.name} ({service.duration_minutes} min)
+                        {service?.name || 'Unknown Service'} ({service?.duration_minutes || 0} min)
                       </option>
-                    ))}
+                    )) : (
+                      <option value="" disabled>No services available</option>
+                    )}
                   </select>
                 </div>
 
@@ -454,11 +468,13 @@ const BookingsView = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Select a barber</option>
-                    {barbers.map(barber => (
+                    {barbers && barbers.length > 0 ? barbers.map(barber => (
                       <option key={barber.id} value={barber.id}>
-                        {barber.name}
+                        {barber?.name || 'Unknown Barber'}
                       </option>
-                    ))}
+                    )) : (
+                      <option value="" disabled>No barbers available</option>
+                    )}
                   </select>
                 </div>
 

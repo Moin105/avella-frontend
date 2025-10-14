@@ -294,16 +294,17 @@ const DashboardHome = () => {
                     appointments.map((appointment) => (
                       <tr key={appointment.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {appointment.time || 'N/A'}
+                          <div>{appointment.time || 'N/A'}</div>
+                          <div className="text-xs text-gray-500">{appointment.date || 'N/A'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {appointment.customer_name || appointment.client_name || 'N/A'}
+                          {appointment.client?.name || appointment.customer_name || appointment.client_name || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {appointment.service_name || 'N/A'}
+                          {appointment.service?.name || appointment.service_name || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {appointment.barber_name || 'N/A'}
+                          {appointment.barber?.name || appointment.barber_name || 'N/A'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
