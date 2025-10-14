@@ -471,6 +471,19 @@ Avella AI Team`;
                 <div className="font-medium text-gray-900">{user?.first_name} {user?.last_name}</div>
                 <div className="text-sm text-purple-600 font-medium">Master Admin</div>
               </div>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('access_token');
+                  localStorage.removeItem('refresh_token');
+                  window.location.href = '/login';
+                }}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-red-700"
+                title="Logout"
+              >
+                <XCircle className="h-4 w-4" />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
@@ -648,7 +661,7 @@ Avella AI Team`;
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {tenant.created_at.toLocaleDateString()}
+                      {new Date(tenant.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">

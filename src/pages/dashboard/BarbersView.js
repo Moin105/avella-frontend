@@ -25,109 +25,18 @@ const BarbersView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showBarberModal, setShowBarberModal] = useState(false);
   const [selectedBarber, setSelectedBarber] = useState(null);
+  const [newBarber, setNewBarber] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    specialties: [],
+    bio: '',
+    is_active: true
+  });
 
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-  // Mock barber data
-  const mockBarbers = [
-    {
-      id: 'david-1',
-      name: 'David Rodriguez',
-      email: 'david@example.com',
-      phone: '+1 (555) 111-2222',
-      specialties: ["Men's Haircuts", "Fades", "Classic Cuts"],
-      bio: 'Experienced barber with 8 years in the industry. Specializes in modern fades and classic gentleman cuts.',
-      profileImage: null,
-      isActive: true,
-      calendarIntegration: {
-        connected: true,
-        provider: 'google',
-        lastSync: new Date(2025, 9, 4, 10, 30), // Oct 4, 2025, 10:30 AM
-        calendarId: 'david@example.com'
-      },
-      schedule: {
-        monday: { start: '09:00', end: '17:00' },
-        tuesday: { start: '09:00', end: '17:00' },
-        wednesday: { start: '09:00', end: '17:00' },
-        thursday: { start: '09:00', end: '17:00' },
-        friday: { start: '09:00', end: '17:00' },
-        saturday: { start: '10:00', end: '16:00' },
-        sunday: null
-      },
-      stats: {
-        totalAppointments: 156,
-        thisMonth: 28,
-        avgRating: 4.8,
-        completionRate: 95
-      },
-      nextAppointment: new Date(2025, 9, 4, 13, 30) // Oct 4, 2025, 1:30 PM
-    },
-    {
-      id: 'susan-1',
-      name: 'Susan Chen',
-      email: 'susan@example.com',
-      phone: '+1 (555) 333-4444',
-      specialties: ["Women's Haircuts", "Color", "Styling", "Highlights"],
-      bio: 'Creative hair stylist passionate about color and modern cuts. 10+ years experience in salon industry.',
-      profileImage: null,
-      isActive: true,
-      calendarIntegration: {
-        connected: true,
-        provider: 'google',
-        lastSync: new Date(2025, 9, 4, 9, 15), // Oct 4, 2025, 9:15 AM
-        calendarId: 'susan@example.com'
-      },
-      schedule: {
-        monday: { start: '10:00', end: '18:00' },
-        tuesday: { start: '10:00', end: '18:00' },
-        wednesday: { start: '10:00', end: '18:00' },
-        thursday: { start: '10:00', end: '18:00' },
-        friday: { start: '10:00', end: '18:00' },
-        saturday: { start: '09:00', end: '15:00' },
-        sunday: null
-      },
-      stats: {
-        totalAppointments: 198,
-        thisMonth: 35,
-        avgRating: 4.9,
-        completionRate: 98
-      },
-      nextAppointment: new Date(2025, 9, 4, 14, 15) // Oct 4, 2025, 2:15 PM
-    },
-    {
-      id: 'john-1',
-      name: 'John Martinez',
-      email: 'john@example.com',
-      phone: '+1 (555) 555-6666',
-      specialties: ["Men's Cuts", "Beard Trimming", "Hot Towel Shaves"],
-      bio: 'Traditional barber with expertise in classic techniques and modern styles.',
-      profileImage: null,
-      isActive: true,
-      calendarIntegration: {
-        connected: false,
-        provider: 'google',
-        lastSync: null,
-        calendarId: null,
-        needsConnection: true
-      },
-      schedule: {
-        monday: { start: '08:00', end: '16:00' },
-        tuesday: { start: '08:00', end: '16:00' },
-        wednesday: { start: '08:00', end: '16:00' },
-        thursday: { start: '08:00', end: '16:00' },
-        friday: { start: '08:00', end: '16:00' },
-        saturday: { start: '09:00', end: '14:00' },
-        sunday: null
-      },
-      stats: {
-        totalAppointments: 89,
-        thisMonth: 18,
-        avgRating: 4.7,
-        completionRate: 92
-      },
-      nextAppointment: null
-    }
-  ];
+  // Real barber data will be loaded from API
 
   useEffect(() => {
     if (currentTenant) {
@@ -142,13 +51,20 @@ const BarbersView = () => {
   const loadBarbers = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with real API call
-      // const response = await axios.get(`${API_URL}/barbers`);
-      // setBarbers(response.data);
-      
-      setBarbers(mockBarbers);
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      console.log('Loading barbers for tenant:', currentTenant?.id);
+      const response = await axios.get(`${API_URL}/barbers`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      console.log('Barbers response:', response.data);
+      setBarbers(response.data || []);
     } catch (error) {
       console.error('Error loading barbers:', error);
+      // Fallback to empty array if API fails
+      setBarbers([]);
     } finally {
       setLoading(false);
     }
@@ -169,7 +85,7 @@ const BarbersView = () => {
   };
 
   const getConnectionStatus = (barber) => {
-    if (!barber.calendarIntegration.connected) {
+    if (!barber.calendar_integration?.connected) {
       return {
         icon: <XCircle className="h-5 w-5 text-red-500" />,
         text: 'Disconnected',
@@ -178,7 +94,7 @@ const BarbersView = () => {
       };
     }
 
-    const lastSync = new Date(barber.calendarIntegration.lastSync);
+    const lastSync = new Date(barber.calendar_integration?.lastSync || new Date());
     const now = new Date();
     const hoursSinceSync = (now - lastSync) / (1000 * 60 * 60);
 
@@ -199,36 +115,18 @@ const BarbersView = () => {
     };
   };
 
-  const formatSchedule = (schedule) => {
-    const workDays = Object.entries(schedule)
-      .filter(([day, hours]) => hours !== null)
+  const formatSchedule = (workingHours) => {
+    if (!workingHours || typeof workingHours !== 'object') {
+      return 'No schedule set';
+    }
+    
+    const workDays = Object.entries(workingHours)
+      .filter(([day, hours]) => hours && hours.is_working)
       .map(([day, hours]) => day.charAt(0).toUpperCase());
     
     return workDays.length > 0 ? workDays.join(', ') : 'No schedule set';
   };
 
-  const formatNextAppointment = (nextAppointment) => {
-    if (!nextAppointment) return 'No upcoming appointments';
-    
-    const now = new Date();
-    const appointment = new Date(nextAppointment);
-    
-    if (appointment.toDateString() === now.toDateString()) {
-      return `Today ${appointment.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      })}`;
-    } else {
-      return appointment.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    }
-  };
 
   const handleConnectCalendar = async (barberId) => {
     try {
@@ -244,17 +142,80 @@ const BarbersView = () => {
 
   const handleEditBarber = (barber) => {
     setSelectedBarber(barber);
+    setNewBarber({
+      name: barber.name || '',
+      email: barber.email || '',
+      phone: barber.phone || '',
+      specialties: barber.specialties || [],
+      bio: barber.bio || '',
+      is_active: barber.is_active
+    });
     setShowBarberModal(true);
+  };
+
+  const handleCreateBarber = () => {
+    setSelectedBarber(null);
+    setNewBarber({
+      name: '',
+      email: '',
+      phone: '',
+      specialties: [],
+      bio: '',
+      is_active: true
+    });
+    setShowBarberModal(true);
+  };
+
+  const handleSaveBarber = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      
+      if (selectedBarber) {
+        // Update existing barber
+        const response = await axios.put(`${API_URL}/barbers/${selectedBarber.id}`, newBarber, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
+        setBarbers(prev => prev.map(b => b.id === selectedBarber.id ? response.data : b));
+        alert('Barber updated successfully');
+      } else {
+        // Create new barber
+        const response = await axios.post(`${API_URL}/barbers`, newBarber, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
+        setBarbers(prev => [...prev, response.data]);
+        alert('Barber created successfully');
+      }
+      
+      setShowBarberModal(false);
+      setSelectedBarber(null);
+    } catch (error) {
+      console.error('Error saving barber:', error);
+      alert('Failed to save barber. Please try again.');
+    }
   };
 
   const handleDeleteBarber = async (barberId) => {
     if (window.confirm('Are you sure you want to delete this barber? This will also cancel all their appointments.')) {
       try {
-        // TODO: Add delete API call
-        // await axios.delete(`${API_URL}/barbers/${barberId}`);
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        await axios.delete(`${API_URL}/barbers/${barberId}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
         setBarbers(prev => prev.filter(b => b.id !== barberId));
+        alert('Barber deleted successfully');
       } catch (error) {
         console.error('Error deleting barber:', error);
+        alert('Failed to delete barber. Please try again.');
       }
     }
   };
@@ -276,7 +237,7 @@ const BarbersView = () => {
           <p className="text-gray-600">Manage your team and their calendar integrations</p>
         </div>
         <button
-          onClick={() => setShowBarberModal(true)}
+          onClick={handleCreateBarber}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
           data-testid="add-barber-btn"
         >
@@ -294,24 +255,20 @@ const BarbersView = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600 mb-1">Connected Calendars</div>
           <div className="text-3xl font-bold text-green-600">
-            {barbers.filter(b => b.calendarIntegration.connected).length}
+            {barbers.filter(b => b.calendar_integration?.connected).length}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="text-sm text-gray-600 mb-1">Avg Rating</div>
-          <div className="text-3xl font-bold text-yellow-600">
-            {barbers.length > 0 ? 
-              (barbers.reduce((acc, b) => acc + b.stats.avgRating, 0) / barbers.length).toFixed(1)
-              : '0.0'
-            }
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="text-sm text-gray-600 mb-1">This Month</div>
+          <div className="text-sm text-gray-600 mb-1">Active Barbers</div>
           <div className="text-3xl font-bold text-blue-600">
-            {barbers.reduce((acc, b) => acc + b.stats.thisMonth, 0)}
+            {barbers.filter(b => b.is_active).length}
           </div>
-          <div className="text-sm text-gray-500">appointments</div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="text-sm text-gray-600 mb-1">Total Services</div>
+          <div className="text-3xl font-bold text-purple-600">
+            {barbers.reduce((acc, b) => acc + (b.services?.length || 0), 0)}
+          </div>
         </div>
       </div>
 
@@ -389,12 +346,12 @@ const BarbersView = () => {
               <div className="p-6 border-b border-gray-200">
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
-                    <div className="text-2xl font-bold text-gray-900">{barber.stats.thisMonth}</div>
-                    <div className="text-sm text-gray-500">This Month</div>
+                    <div className="text-2xl font-bold text-gray-900">{barber.services?.length || 0}</div>
+                    <div className="text-sm text-gray-500">Services</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-gray-900">{barber.stats.avgRating}</div>
-                    <div className="text-sm text-gray-500">Avg Rating</div>
+                    <div className="text-2xl font-bold text-gray-900">{barber.is_active ? 'Active' : 'Inactive'}</div>
+                    <div className="text-sm text-gray-500">Status</div>
                   </div>
                 </div>
               </div>
@@ -416,17 +373,17 @@ const BarbersView = () => {
                 <div className="space-y-3">
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">Schedule</h4>
-                    <p className="text-sm text-gray-600">{formatSchedule(barber.schedule)}</p>
+                    <p className="text-sm text-gray-600">{formatSchedule(barber.working_hours)}</p>
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900">Next Appointment</h4>
-                    <p className="text-sm text-gray-600">{formatNextAppointment(barber.nextAppointment)}</p>
+                    <h4 className="text-sm font-medium text-gray-900">Status</h4>
+                    <p className="text-sm text-gray-600">{barber.is_active ? 'Active' : 'Inactive'}</p>
                   </div>
                 </div>
 
                 {/* Action Button */}
                 <div className="mt-4">
-                  {!barber.calendarIntegration.connected ? (
+                  {!barber.calendar_integration?.connected ? (
                     <button
                       onClick={() => handleConnectCalendar(barber.id)}
                       className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
@@ -463,21 +420,96 @@ const BarbersView = () => {
             <h2 className="text-lg font-semibold mb-4">
               {selectedBarber ? 'Edit Barber' : 'Add New Barber'}
             </h2>
-            <p className="text-gray-600 mb-4">Barber form will be implemented here</p>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => {
-                  setShowBarberModal(false);
-                  setSelectedBarber(null);
-                }}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                {selectedBarber ? 'Update' : 'Create'} Barber
-              </button>
-            </div>
+            <form onSubmit={handleSaveBarber} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newBarber.name}
+                  onChange={(e) => setNewBarber({...newBarber, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter barber name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newBarber.email}
+                  onChange={(e) => setNewBarber({...newBarber, email: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter email address"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={newBarber.phone}
+                  onChange={(e) => setNewBarber({...newBarber, phone: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter phone number"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                <textarea
+                  value={newBarber.bio}
+                  onChange={(e) => setNewBarber({...newBarber, bio: e.target.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter barber bio/description"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Specialties</label>
+                <input
+                  type="text"
+                  value={newBarber.specialties.join(', ')}
+                  onChange={(e) => setNewBarber({...newBarber, specialties: e.target.value.split(',').map(s => s.trim()).filter(s => s)})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter specialties (comma separated)"
+                />
+                <p className="text-xs text-gray-500 mt-1">Separate multiple specialties with commas</p>
+              </div>
+              
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={newBarber.is_active}
+                  onChange={(e) => setNewBarber({...newBarber, is_active: e.target.checked})}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="is_active" className="ml-2 block text-sm text-gray-700">
+                  Active
+                </label>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBarberModal(false);
+                    setSelectedBarber(null);
+                  }}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  {selectedBarber ? 'Update' : 'Create'} Barber
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

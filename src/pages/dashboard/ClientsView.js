@@ -26,74 +26,7 @@ const ClientsView = () => {
 
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-  // Mock client data
-  const mockClients = [
-    {
-      id: '1',
-      firstName: 'Bob',
-      lastName: 'Lee',
-      email: 'bob.lee@example.com',
-      phone: '+1 (555) 123-4567',
-      totalAppointments: 12,
-      lastVisit: new Date(2025, 9, 1), // Oct 1, 2025
-      preferences: { barber: 'David', service: "Men's Haircut" },
-      notes: 'Prefers short cuts, regular customer',
-      status: 'active',
-      createdAt: new Date(2024, 8, 15) // Sep 15, 2024
-    },
-    {
-      id: '2',
-      firstName: 'Ana',
-      lastName: 'Ruiz',
-      email: 'ana.ruiz@example.com',
-      phone: '+1 (555) 987-6543',
-      totalAppointments: 8,
-      lastVisit: new Date(2025, 8, 28), // Sep 28, 2025
-      preferences: { barber: 'Susan', service: "Women's Haircut" },
-      notes: 'Likes layers and highlights',
-      status: 'active',
-      createdAt: new Date(2024, 11, 3) // Dec 3, 2024
-    },
-    {
-      id: '3',
-      firstName: 'Marco',
-      lastName: 'Silva',
-      email: 'marco.silva@example.com',
-      phone: '+1 (555) 456-7890',
-      totalAppointments: 3,
-      lastVisit: new Date(2025, 9, 2), // Oct 2, 2025
-      preferences: { barber: 'John', service: 'Men + Beard' },
-      notes: 'New customer, first visit was great',
-      status: 'active',
-      createdAt: new Date(2025, 8, 1) // Sep 1, 2025
-    },
-    {
-      id: '4',
-      firstName: 'Tiffany',
-      lastName: 'Nguyen',
-      email: 'tiffany.nguyen@example.com',
-      phone: '+1 (555) 321-0987',
-      totalAppointments: 15,
-      lastVisit: new Date(2025, 8, 15), // Sep 15, 2025
-      preferences: { barber: 'Susan', service: 'Color Treatment' },
-      notes: 'VIP client, always books monthly',
-      status: 'vip',
-      createdAt: new Date(2024, 5, 10) // Jun 10, 2024
-    },
-    {
-      id: '5',
-      firstName: 'Kevin',
-      lastName: 'Ortiz',
-      email: 'kevin.ortiz@example.com',
-      phone: '+1 (555) 654-3210',
-      totalAppointments: 6,
-      lastVisit: new Date(2025, 7, 20), // Aug 20, 2025
-      preferences: { barber: 'David', service: "Men's Haircut" },
-      notes: 'Sometimes late to appointments',
-      status: 'active',
-      createdAt: new Date(2025, 2, 5) // Mar 5, 2025
-    }
-  ];
+  // Real client data will be loaded from API
 
   useEffect(() => {
     if (currentTenant) {
@@ -108,13 +41,18 @@ const ClientsView = () => {
   const loadClients = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with real API call
-      // const response = await axios.get(`${API_URL}/clients`);
-      // setClients(response.data);
-      
-      setClients(mockClients);
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const response = await axios.get(`${API_URL}/clients`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      setClients(response.data || []);
     } catch (error) {
       console.error('Error loading clients:', error);
+      // Fallback to empty array if API fails
+      setClients([]);
     } finally {
       setLoading(false);
     }

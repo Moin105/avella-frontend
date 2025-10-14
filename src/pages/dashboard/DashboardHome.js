@@ -32,89 +32,132 @@ const DashboardHome = () => {
 
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-  // Mock data for demonstration - replace with real API calls
-  const mockStats = {
-    todaysBookings: { count: 18, change: '+4', changeType: 'positive' },
-    noShows: { count: 1, target: 'target ≤ 2' },
-    nextAvailable: { time: 'Today 3:15 PM', barber: 'Any barber' },
-    revenue: { amount: '$540', change: '+$120 vs avg', changeType: 'positive' }
+  // Real stats will be calculated from actual data
+  const [stats, setStats] = useState({
+    todaysBookings: { count: 0, change: '+0', changeType: 'neutral' },
+    noShows: { count: 0, target: 'target ≤ 2' },
+    nextAvailable: { time: 'No availability', barber: 'No barbers' },
+    revenue: { amount: '$0', change: '+$0 vs avg', changeType: 'neutral' }
+  });
+
+  // Load real data when tenant is available
+  useEffect(() => {
+    if (currentTenant) {
+      loadDashboardData();
+    }
+  }, [currentTenant]);
+
+  const loadDashboardData = async () => {
+    try {
+      await Promise.all([
+        loadAppointments(),
+        loadBarbers(),
+        loadServices()
+      ]);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    }
   };
 
-  const mockAppointments = [
-    {
-      id: 1,
-      time: '9:00 AM',
-      client: 'Bob Lee',
-      service: "Men's Haircut (30m)",
-      barber: 'David',
-      status: 'Confirmed',
-      channel: 'Call'
-    },
-    {
-      id: 2,
-      time: '9:45 AM',
-      client: 'Ana Ruiz',
-      service: "Women's Haircut (60m)",
-      barber: 'Susan',
-      status: 'Confirmed',
-      channel: 'Web'
-    },
-    {
-      id: 3,
-      time: '10:00 AM',
-      client: 'Marco S.',
-      service: 'Men + Beard (45m)',
-      barber: 'John',
-      status: 'Pending',
-      channel: 'Call'
-    },
-    {
-      id: 4,
-      time: '11:15 AM',
-      client: 'T. Nguyen',
-      service: "Men's Haircut (30m)",
-      barber: 'David',
-      status: 'Confirmed',
-      channel: 'SMS'
-    },
-    {
-      id: 5,
-      time: '1:00 PM',
-      client: 'K. Ortiz',
-      service: "Men's Haircut (30m)",
-      barber: 'David',
-      status: 'Busy→Alt 1:30p',
-      channel: 'Call'
-    },
-    {
-      id: 6,
-      time: '3:30 PM',
-      client: 'Walk-in Hold',
-      service: 'Any (30m)',
-      barber: 'Any',
-      status: 'Tentative',
-      channel: 'Front d'
+  const loadAppointments = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const response = await axios.get(`${API_URL}/appointments`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      setAppointments(response.data || []);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      setAppointments([]);
     }
-  ];
+  };
 
-  const mockBarbers = [
-    { name: 'David', nextAppointment: 'Next: 1:30 PM', connected: true },
-    { name: 'Susan', nextAppointment: 'Next: 2:15 PM', connected: true },
-    { name: 'John', nextAppointment: '', connected: false, needsConnection: true }
-  ];
+  const loadBarbers = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      console.log('Dashboard loading barbers for tenant:', currentTenant?.id);
+      const response = await axios.get(`${API_URL}/barbers`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      console.log('Dashboard barbers response:', response.data);
+      setBarbers(response.data || []);
+    } catch (error) {
+      console.error('Error loading barbers:', error);
+      setBarbers([]);
+    }
+  };
 
-  const businessHours = [
-    'Mon-Fri 9:00a-6:00p',
-    'Sat 10:00a-4:00p',
-    'Sun Closed'
-  ];
+  const loadServices = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const response = await axios.get(`${API_URL}/services`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      setServices(response.data || []);
+    } catch (error) {
+      console.error('Error loading services:', error);
+      setServices([]);
+    }
+  };
 
-  const servicesList = [
-    'Men 30m',
-    'Men+Beard 45m', 
-    'Women 60m',
-    'Buffer 5m'
-  ];
+  // Calculate stats from real data
+  useEffect(() => {
+    calculateStats();
+  }, [appointments, barbers, services]);
+
+  const calculateStats = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const todaysAppointments = (appointments || []).filter(apt => 
+      apt.date === today && apt.status === 'confirmed'
+    );
+    
+    const noShows = (appointments || []).filter(apt => apt.status === 'no_show');
+    const totalRevenue = (appointments || [])
+      .filter(apt => apt.status === 'completed')
+      .reduce((sum, apt) => sum + (apt.price || 0), 0);
+
+    setStats({
+      todaysBookings: { 
+        count: todaysAppointments.length, 
+        change: '+0', 
+        changeType: 'neutral' 
+      },
+      noShows: { 
+        count: noShows.length, 
+        target: 'target ≤ 2' 
+      },
+      nextAvailable: { 
+        time: (barbers && barbers.length > 0) ? 'Check calendar' : 'No barbers', 
+        barber: (barbers && barbers.length > 0) ? barbers[0].name : 'No barbers' 
+      },
+      revenue: { 
+        amount: `$${totalRevenue}`, 
+        change: '+$0 vs avg', 
+        changeType: 'neutral' 
+      }
+    });
+  };
+
+  const businessHours = currentTenant?.business_hours ? 
+    Object.entries(currentTenant.business_hours)
+      .filter(([day, hours]) => hours && hours.start && hours.end)
+      .map(([day, hours]) => 
+        `${day.charAt(0).toUpperCase() + day.slice(1)} ${hours.start}-${hours.end}`
+      ) : ['No hours set'];
+
+  const servicesList = services && services.length > 0 ? 
+    services.map(service => 
+      `${service.name} ${service.duration_minutes || 0}m`
+    ) : ['No services available'];
 
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
@@ -156,26 +199,26 @@ const DashboardHome = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600 mb-1">Today's bookings</div>
-          <div className="text-3xl font-bold text-gray-900">{mockStats.todaysBookings.count}</div>
-          <div className="text-sm text-green-600 mt-1">{mockStats.todaysBookings.change} vs yesterday</div>
+          <div className="text-3xl font-bold text-gray-900">{stats.todaysBookings.count}</div>
+          <div className="text-sm text-green-600 mt-1">{stats.todaysBookings.change} vs yesterday</div>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600 mb-1">No-shows</div>
-          <div className="text-3xl font-bold text-gray-900">{mockStats.noShows.count}</div>
-          <div className="text-sm text-gray-500 mt-1">{mockStats.noShows.target}</div>
+          <div className="text-3xl font-bold text-gray-900">{stats.noShows.count}</div>
+          <div className="text-sm text-gray-500 mt-1">{stats.noShows.target}</div>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600 mb-1">Next available</div>
-          <div className="text-lg font-semibold text-gray-900">{mockStats.nextAvailable.time}</div>
-          <div className="text-sm text-gray-500 mt-1">{mockStats.nextAvailable.barber}</div>
+          <div className="text-lg font-semibold text-gray-900">{stats.nextAvailable.time}</div>
+          <div className="text-sm text-gray-500 mt-1">{stats.nextAvailable.barber}</div>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600 mb-1">Revenue (today)</div>
-          <div className="text-3xl font-bold text-gray-900">{mockStats.revenue.amount}</div>
-          <div className="text-sm text-green-600 mt-1">{mockStats.revenue.change}</div>
+          <div className="text-3xl font-bold text-gray-900">{stats.revenue.amount}</div>
+          <div className="text-sm text-green-600 mt-1">{stats.revenue.change}</div>
         </div>
       </div>
 
@@ -247,33 +290,41 @@ const DashboardHome = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mockAppointments.map((appointment) => (
-                    <tr key={appointment.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {appointment.time}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {appointment.client}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {appointment.service}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {appointment.barber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
-                          {appointment.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center space-x-1">
-                          {getChannelIcon(appointment.channel)}
-                          <span>{appointment.channel}</span>
-                        </div>
+                  {appointments.length > 0 ? (
+                    appointments.map((appointment) => (
+                      <tr key={appointment.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {appointment.time || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {appointment.customer_name || appointment.client_name || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {appointment.service_name || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {appointment.barber_name || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(appointment.status)}`}>
+                            {appointment.status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center space-x-1">
+                            {getChannelIcon(appointment.channel || 'web')}
+                            <span>{appointment.channel || 'web'}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                        No appointments found. Create your first appointment to get started!
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -313,32 +364,38 @@ const DashboardHome = () => {
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Barbers & calendars</h3>
             <div className="space-y-4">
-              {mockBarbers.map((barber, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900">{barber.name}</div>
-                    {barber.nextAppointment && (
-                      <div className="text-sm text-gray-500">{barber.nextAppointment}</div>
-                    )}
-                    {barber.needsConnection && (
-                      <div className="text-sm text-gray-500">Connect required</div>
-                    )}
+              {barbers.length > 0 ? (
+                barbers.map((barber) => (
+                  <div key={barber.id} className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-gray-900">{barber.name}</div>
+                      <div className="text-sm text-gray-500">{barber.role || 'Staff'}</div>
+                      {barber.services && barber.services.length > 0 && (
+                        <div className="text-sm text-gray-500">
+                          {barber.services.length} service{barber.services.length > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {barber.is_active ? (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-sm text-green-600">Active</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-sm text-red-600">Inactive</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    {barber.connected ? (
-                      <>
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm text-green-600">Connected</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        <span className="text-sm text-red-600">Disconnected</span>
-                      </>
-                    )}
-                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  No barbers found. Add staff members to get started!
                 </div>
-              ))}
+              )}
             </div>
           </div>
 

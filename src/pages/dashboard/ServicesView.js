@@ -21,42 +21,19 @@ const ServicesView = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+  const [newService, setNewService] = useState({
+    name: '',
+    description: '',
+    duration_minutes: 30,
+    price: 0,
+    category: 'Haircuts & Trims',
+    buffer_minutes: 5,
+    is_active: true
+  });
 
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-  // Mock services data based on the proposal
-  const mockServices = [
-    // Haircuts & Trims
-    { id: 1, name: "Short Cut / Clipper Cut", category: "Haircuts & Trims", duration: 30, buffer: 5, price: 25, description: "Short cut or clipper cut for all genders", isActive: true },
-    { id: 2, name: "Skin Fade / Specialty Fade", category: "Haircuts & Trims", duration: 45, buffer: 5, price: 35, description: "Professional skin fade or specialty fade", isActive: true },
-    { id: 3, name: "Scissor Cut (Medium Length)", category: "Haircuts & Trims", duration: 45, buffer: 5, price: 30, description: "Medium length scissor cut", isActive: true },
-    { id: 4, name: "Long Cut & Style", category: "Haircuts & Trims", duration: 60, buffer: 10, price: 45, description: "Long cut and style for shoulder+ length hair", isActive: true },
-    { id: 5, name: "Kids Cut (Under 12)", category: "Haircuts & Trims", duration: 30, buffer: 5, price: 20, description: "Haircut for children under 12", isActive: true },
-    
-    // Grooming
-    { id: 6, name: "Beard Trim", category: "Grooming", duration: 20, buffer: 5, price: 15, description: "Professional beard trim with clippers/scissors", isActive: true },
-    { id: 7, name: "Line-up & Shape", category: "Grooming", duration: 20, buffer: 5, price: 15, description: "Line-up and shape service", isActive: true },
-    { id: 8, name: "Hot Towel Shave", category: "Grooming", duration: 30, buffer: 5, price: 25, description: "Traditional hot towel shave", isActive: true },
-    { id: 9, name: "Haircut + Beard Combo", category: "Grooming", duration: 45, buffer: 10, price: 35, description: "Combined haircut and beard service", isActive: true },
-    
-    // Styling & Finishing
-    { id: 10, name: "Shampoo & Style", category: "Styling & Finishing", duration: 35, buffer: 5, price: 20, description: "Shampoo and basic styling/blowout", isActive: true },
-    { id: 11, name: "Signature Blowout", category: "Styling & Finishing", duration: 50, buffer: 10, price: 35, description: "Professional blowout with round brush", isActive: true },
-    { id: 12, name: "Updo / Event Style", category: "Styling & Finishing", duration: 75, buffer: 10, price: 65, description: "Updo or special event styling", isActive: true },
-    
-    // Color Services
-    { id: 13, name: "Root Touch-up", category: "Color Services", duration: 120, buffer: 10, price: 80, description: "Single process root touch-up", isActive: true },
-    { id: 14, name: "All-over Color", category: "Color Services", duration: 140, buffer: 10, price: 120, description: "Full all-over color service", isActive: true },
-    { id: 15, name: "Partial Highlights", category: "Color Services", duration: 155, buffer: 15, price: 140, description: "Partial highlights", isActive: true },
-    { id: 16, name: "Full Highlights", category: "Color Services", duration: 200, buffer: 15, price: 180, description: "Full highlights", isActive: true },
-    
-    // Treatments
-    { id: 17, name: "Deep Conditioning Treatment", category: "Treatments", duration: 25, buffer: 5, price: 25, description: "Deep conditioning or bond builder treatment", isActive: true },
-    { id: 18, name: "Scalp Treatment", category: "Treatments", duration: 25, buffer: 5, price: 30, description: "Professional scalp treatment", isActive: true },
-    
-    // Consultations
-    { id: 19, name: "New Client Consultation", category: "Consultations", duration: 20, buffer: 5, price: 0, description: "Consultation for new clients", isActive: true }
-  ];
+  // Real services data will be loaded from API
 
   const categories = [
     'all',
@@ -81,13 +58,18 @@ const ServicesView = () => {
   const loadServices = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with real API call
-      // const response = await axios.get(`${API_URL}/services`);
-      // setServices(response.data);
-      
-      setServices(mockServices);
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const response = await axios.get(`${API_URL}/services`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      setServices(response.data || []);
     } catch (error) {
       console.error('Error loading services:', error);
+      // Fallback to empty array if API fails
+      setServices([]);
     } finally {
       setLoading(false);
     }
@@ -145,17 +127,82 @@ const ServicesView = () => {
 
   const handleEditService = (service) => {
     setSelectedService(service);
+    setNewService({
+      name: service.name || '',
+      description: service.description || '',
+      duration_minutes: service.duration_minutes || 30,
+      price: service.price || 0,
+      category: service.category || 'Haircuts & Trims',
+      buffer_minutes: service.buffer_minutes || 5,
+      is_active: service.is_active
+    });
     setShowServiceModal(true);
+  };
+
+  const handleCreateService = () => {
+    setSelectedService(null);
+    setNewService({
+      name: '',
+      description: '',
+      duration_minutes: 30,
+      price: 0,
+      category: 'Haircuts & Trims',
+      buffer_minutes: 5,
+      is_active: true
+    });
+    setShowServiceModal(true);
+  };
+
+  const handleSaveService = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      
+      if (selectedService) {
+        // Update existing service
+        const response = await axios.put(`${API_URL}/services/${selectedService.id}`, newService, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
+        setServices(prev => prev.map(s => s.id === selectedService.id ? response.data : s));
+        alert('Service updated successfully');
+      } else {
+        // Create new service
+        const response = await axios.post(`${API_URL}/services`, newService, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
+        setServices(prev => [...prev, response.data]);
+        alert('Service created successfully');
+      }
+      
+      setShowServiceModal(false);
+      setSelectedService(null);
+    } catch (error) {
+      console.error('Error saving service:', error);
+      alert('Failed to save service. Please try again.');
+    }
   };
 
   const handleDeleteService = async (serviceId) => {
     if (window.confirm('Are you sure you want to delete this service?')) {
       try {
-        // TODO: Add delete API call
-        // await axios.delete(`${API_URL}/services/${serviceId}`);
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        await axios.delete(`${API_URL}/services/${serviceId}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
         setServices(prev => prev.filter(s => s.id !== serviceId));
+        alert('Service deleted successfully');
       } catch (error) {
         console.error('Error deleting service:', error);
+        alert('Failed to delete service. Please try again.');
       }
     }
   };
@@ -186,7 +233,7 @@ const ServicesView = () => {
           <p className="text-gray-600">Manage your service offerings and pricing</p>
         </div>
         <button
-          onClick={() => setShowServiceModal(true)}
+          onClick={handleCreateService}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
           data-testid="add-service-btn"
         >
@@ -353,21 +400,115 @@ const ServicesView = () => {
             <h2 className="text-lg font-semibold mb-4">
               {selectedService ? 'Edit Service' : 'Add New Service'}
             </h2>
-            <p className="text-gray-600 mb-4">Service form will be implemented here</p>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => {
-                  setShowServiceModal(false);
-                  setSelectedService(null);
-                }}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                {selectedService ? 'Update' : 'Create'} Service
-              </button>
-            </div>
+            <form onSubmit={handleSaveService} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Service Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newService.name}
+                  onChange={(e) => setNewService({...newService, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter service name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={newService.description}
+                  onChange={(e) => setNewService({...newService, description: e.target.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter service description"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={newService.duration_minutes}
+                    onChange={(e) => setNewService({...newService, duration_minutes: parseInt(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price ($) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={newService.price}
+                    onChange={(e) => setNewService({...newService, price: parseFloat(e.target.value)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <select
+                  required
+                  value={newService.category}
+                  onChange={(e) => setNewService({...newService, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {categories.filter(c => c !== 'all').map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Buffer Time (minutes)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newService.buffer_minutes}
+                  onChange={(e) => setNewService({...newService, buffer_minutes: parseInt(e.target.value)})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Extra time between appointments</p>
+              </div>
+              
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="is_active_service"
+                  checked={newService.is_active}
+                  onChange={(e) => setNewService({...newService, is_active: e.target.checked})}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="is_active_service" className="ml-2 block text-sm text-gray-700">
+                  Active
+                </label>
+              </div>
+              
+              <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowServiceModal(false);
+                    setSelectedService(null);
+                  }}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  {selectedService ? 'Update' : 'Create'} Service
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

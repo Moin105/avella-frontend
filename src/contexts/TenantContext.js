@@ -16,15 +16,21 @@ export const TenantProvider = ({ children }) => {
   const [tenants, setTenants] = useState([]);
   const [currentTenant, setCurrentTenant] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only fetch tenants when auth is fully loaded and user is authenticated
+    if (isAuthenticated && !authLoading) {
       fetchTenants();
+    } else if (!isAuthenticated && !authLoading) {
+      // Clear tenants if user is not authenticated
+      setTenants([]);
+      setCurrentTenant(null);
+      setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   // Set X-Tenant-ID header when current tenant changes
   useEffect(() => {

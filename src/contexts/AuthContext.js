@@ -16,6 +16,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
 
   const API_URL = `${process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000'}/api`;
 
@@ -33,7 +35,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
+    // Prevent multiple concurrent auth checks
+    if (isCheckingAuth) {
+      return;
+    }
+
     try {
+      setIsCheckingAuth(true);
       const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       if (!token) {
         setLoading(false);
@@ -50,18 +58,30 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Auth check failed:', error);
       // Token might be expired, try to refresh
-      await refreshToken();
+      const refreshSuccess = await refreshToken();
+      if (!refreshSuccess) {
+        // If refresh also failed, user is not authenticated
+        setUser(null);
+        setIsAuthenticated(false);
+      }
     } finally {
       setLoading(false);
+      setIsCheckingAuth(false);
     }
   };
 
   const refreshToken = async () => {
+    // Prevent multiple concurrent refresh attempts
+    if (isRefreshing) {
+      return false;
+    }
+
     try {
+      setIsRefreshing(true);
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) {
         logout();
-        return;
+        return false;
       }
 
       const response = await axios.post(`${API_URL}/auth/refresh-token`, {
@@ -78,13 +98,18 @@ export const AuthProvider = ({ children }) => {
       // Update axios headers
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-      // Get updated user info
+      // Get updated user info after successful token refresh
       const userResponse = await axios.get(`${API_URL}/auth/me`);
       setUser(userResponse.data);
       setIsAuthenticated(true);
+      
+      return true; // Indicate successful refresh
     } catch (error) {
       console.error('Token refresh failed:', error);
       logout();
+      return false; // Indicate failed refresh
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -181,17 +206,22 @@ export const AuthProvider = ({ children }) => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401 && isAuthenticated) {
-          // Try to refresh token
-          await refreshToken();
-          
-          // Retry original request
+        // Only handle 401 errors for authenticated users
+        if (error.response?.status === 401 && isAuthenticated && !isRefreshing) {
+          // Skip if this is already a retry attempt or if we're already refreshing
           if (error.config && !error.config._retry) {
             error.config._retry = true;
-            const token = localStorage.getItem('access_token');
-            if (token) {
-              error.config.headers.Authorization = `Bearer ${token}`;
-              return axios.request(error.config);
+            
+            // Try to refresh token
+            const refreshSuccess = await refreshToken();
+            
+            // Retry original request only if refresh was successful
+            if (refreshSuccess) {
+              const token = localStorage.getItem('access_token');
+              if (token) {
+                error.config.headers.Authorization = `Bearer ${token}`;
+                return axios.request(error.config);
+              }
             }
           }
         }
@@ -202,7 +232,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isRefreshing]);
 
   const value = {
     user,
