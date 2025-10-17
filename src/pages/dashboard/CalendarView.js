@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '../../contexts/TenantContext';
+import axios from 'axios';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -16,67 +17,100 @@ const CalendarView = () => {
   const [viewMode, setViewMode] = useState('week'); // 'day', 'week', 'month'
   const [selectedBarber, setSelectedBarber] = useState('all');
   const [appointments, setAppointments] = useState([]);
+  const [barbers, setBarbers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock appointment data
-  const mockAppointments = [
-    {
-      id: 1,
-      title: "Men's Haircut - Bob Lee",
-      start: new Date(2025, 9, 4, 9, 0), // Oct 4, 2025, 9:00 AM
-      end: new Date(2025, 9, 4, 9, 30),
-      barber: 'David',
-      client: 'Bob Lee',
-      service: "Men's Haircut",
-      status: 'confirmed'
-    },
-    {
-      id: 2,
-      title: "Women's Haircut - Ana Ruiz",
-      start: new Date(2025, 9, 4, 9, 45),
-      end: new Date(2025, 9, 4, 10, 45),
-      barber: 'Susan',
-      client: 'Ana Ruiz',
-      service: "Women's Haircut",
-      status: 'confirmed'
-    },
-    {
-      id: 3,
-      title: "Men + Beard - Marco S.",
-      start: new Date(2025, 9, 4, 10, 0),
-      end: new Date(2025, 9, 4, 10, 45),
-      barber: 'John',
-      client: 'Marco S.',
-      service: 'Men + Beard',
-      status: 'pending'
-    },
-    {
-      id: 4,
-      title: "Men's Haircut - T. Nguyen",
-      start: new Date(2025, 9, 4, 11, 15),
-      end: new Date(2025, 9, 4, 11, 45),
-      barber: 'David',
-      client: 'T. Nguyen',
-      service: "Men's Haircut",
-      status: 'confirmed'
-    },
-    {
-      id: 5,
-      title: "Men's Haircut - K. Ortiz",
-      start: new Date(2025, 9, 4, 13, 0),
-      end: new Date(2025, 9, 4, 13, 30),
-      barber: 'David',
-      client: 'K. Ortiz',
-      service: "Men's Haircut",
-      status: 'busy'
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+  // Load appointments and barbers when component mounts or tenant changes
+  useEffect(() => {
+    if (currentTenant) {
+      loadAppointments();
+      loadBarbers();
     }
-  ];
+  }, [currentTenant, currentDate, viewMode]);
 
-  const barbers = [
-    { id: 'all', name: 'All Barbers', color: '#3B82F6' },
-    { id: 'david', name: 'David', color: '#10B981' },
-    { id: 'susan', name: 'Susan', color: '#F59E0B' },
-    { id: 'john', name: 'John', color: '#EF4444' }
-  ];
+  const loadAppointments = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      
+      // Calculate date range for the current view
+      const startDate = new Date(currentDate);
+      const endDate = new Date(currentDate);
+      
+      if (viewMode === 'week') {
+        startDate.setDate(currentDate.getDate() - currentDate.getDay());
+        endDate.setDate(currentDate.getDate() + (6 - currentDate.getDay()));
+      } else if (viewMode === 'month') {
+        startDate.setDate(1);
+        endDate.setMonth(currentDate.getMonth() + 1, 0);
+      }
+      // For day view, startDate and endDate are the same day
+      
+      const response = await axios.get(`${API_URL}/appointments`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        },
+        params: {
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
+        }
+      });
+      
+      // Transform API data to calendar format
+      const transformedAppointments = response.data.map(apt => ({
+        id: apt.id,
+        title: `${apt.service?.name || 'Service'} - ${apt.client?.name || apt.customer?.name || 'Client'}`,
+        start: new Date(apt.start_time),
+        end: new Date(apt.end_time),
+        barber: apt.barber?.name || 'Unknown',
+        barber_id: apt.barber_id,
+        client: apt.client?.name || apt.customer?.name || 'Client',
+        service: apt.service?.name || 'Service',
+        status: apt.status,
+        customer_phone: apt.client?.phone || apt.customer?.phone,
+        customer_email: apt.client?.email || apt.customer?.email,
+        notes: apt.notes
+      }));
+      
+      setAppointments(transformedAppointments);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadBarbers = async () => {
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const response = await axios.get(`${API_URL}/barbers`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      
+      // Transform barbers data and add colors
+      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316', '#06B6D4', '#84CC16'];
+      const transformedBarbers = [
+        { id: 'all', name: 'All Barbers', color: '#3B82F6' },
+        ...response.data.map((barber, index) => ({
+          id: barber.id,
+          name: barber.name,
+          color: colors[index % colors.length]
+        }))
+      ];
+      
+      setBarbers(transformedBarbers);
+    } catch (error) {
+      console.error('Error loading barbers:', error);
+      setBarbers([{ id: 'all', name: 'All Barbers', color: '#3B82F6' }]);
+    }
+  };
 
   const timeSlots = Array.from({ length: 24 }, (_, i) => {
     const hour = i;
@@ -101,7 +135,7 @@ const CalendarView = () => {
   };
 
   const getAppointmentsForDay = (date) => {
-    return mockAppointments.filter(apt => {
+    return appointments.filter(apt => {
       return apt.start.toDateString() === date.toDateString();
     });
   };
@@ -189,7 +223,7 @@ const CalendarView = () => {
                 
                 {/* Appointments for this day */}
                 {getAppointmentsForDay(day).map((appointment) => {
-                  if (selectedBarber !== 'all' && appointment.barber.toLowerCase() !== selectedBarber) {
+                  if (selectedBarber !== 'all' && appointment.barber_id !== selectedBarber) {
                     return null;
                   }
                   
@@ -304,18 +338,26 @@ const CalendarView = () => {
 
       {/* Calendar Content */}
       <div className="flex-1 overflow-hidden">
-        {viewMode === 'week' && renderWeekView()}
-        {viewMode === 'day' && (
-          <div className="p-6 text-center">
-            <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Day view implementation coming soon</p>
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
-        )}
-        {viewMode === 'month' && (
-          <div className="p-6 text-center">
-            <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Month view implementation coming soon</p>
-          </div>
+        ) : (
+          <>
+            {viewMode === 'week' && renderWeekView()}
+            {viewMode === 'day' && (
+              <div className="p-6 text-center">
+                <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Day view implementation coming soon</p>
+              </div>
+            )}
+            {viewMode === 'month' && (
+              <div className="p-6 text-center">
+                <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Month view implementation coming soon</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

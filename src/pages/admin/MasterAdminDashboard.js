@@ -23,6 +23,7 @@ import IntegrationHealth from './IntegrationHealth';
 import ErrorCenter from './ErrorCenter';
 import MetricsDashboard from './MetricsDashboard';
 import CopyLibrary from './CopyLibrary';
+import OnboardingWizard from '../../components/onboarding/OnboardingWizard';
 
 const MasterAdminDashboard = () => {
   const { user } = useAuth();
@@ -35,6 +36,7 @@ const MasterAdminDashboard = () => {
   const [newBarbershopCredentials, setNewBarbershopCredentials] = useState(null);
   const [addingBarbershop, setAddingBarbershop] = useState(false);
   const [activeView, setActiveView] = useState('tenants'); // tenants, audit, killswitch, integrations, errors, templates, metrics
+  const [showAdvancedOnboarding, setShowAdvancedOnboarding] = useState(false);
 
   const [newBarbershop, setNewBarbershop] = useState({
     businessName: '',
@@ -45,6 +47,7 @@ const MasterAdminDashboard = () => {
     ownerPhone: '',
     address: '',
     phone: '',
+    businessNumber: '',
     website: '',
     timezone: 'America/New_York'
   });
@@ -238,6 +241,7 @@ const MasterAdminDashboard = () => {
         business_type: newBarbershop.businessType,
         address: newBarbershop.address,
         phone: newBarbershop.phone,
+        business_number: newBarbershop.businessNumber,
         website: newBarbershop.website,
         timezone: newBarbershop.timezone
       }, {
@@ -298,6 +302,14 @@ const MasterAdminDashboard = () => {
 
       setShowAddBarbershopModal(false);
       setShowCredentialsModal(true);
+
+      // Inform admin that voice number is wired
+      try {
+        const bnum = newBarbershop.businessNumber || newBarbershop.phone;
+        if (bnum) {
+          alert(`Tenant created and business number saved. Calls to ${bnum} will be handled by the voice agent.`);
+        }
+      } catch {}
 
     } catch (error) {
       console.error('Error adding barbershop:', error);
@@ -464,7 +476,15 @@ Avella AI Team`;
                 data-testid="add-barbershop-btn"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add New Barbershop</span>
+                <span>Add Barbershop</span>
+              </button>
+              <button
+                onClick={() => setShowAdvancedOnboarding(true)}
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-purple-700"
+                title="Run full onboarding wizard"
+              >
+                <Settings className="h-4 w-4" />
+                <span>Open Full Onboarding</span>
               </button>
               <div className="text-right">
                 <div className="text-sm text-gray-500">Logged in as</div>
@@ -619,6 +639,9 @@ Avella AI Team`;
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business Number</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Voice Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stats</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -643,6 +666,22 @@ Avella AI Team`;
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{tenant.owner_name}</div>
                       <div className="text-sm text-gray-500">{tenant.owner_email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                        {tenant.temp_password || 'N/A'}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">Temporary Password</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="font-mono">{tenant.business_number || tenant.phone || '—'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {tenant.voice_status?.configured ? (
+                        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Configured</span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Not Configured</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full capitalize">
@@ -671,6 +710,23 @@ Avella AI Team`;
                           title="Impersonate"
                         >
                           Impersonate
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('token');
+                              await axios.post(`${API_URL}/admin/users/resend-invite`, { email: tenant.owner_email }, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                              });
+                              alert(`Invite re-sent to ${tenant.owner_email}`);
+                            } catch (e) {
+                              alert('Failed to resend invite');
+                            }
+                          }}
+                          className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200"
+                          title="Resend Invite"
+                        >
+                          Resend Invite
                         </button>
                         {tenant.is_active ? (
                           <button 
@@ -740,7 +796,7 @@ Avella AI Team`;
       {showAddBarbershopModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-semibold mb-6">Add New Barbershop</h2>
+            <h2 className="text-xl font-semibold mb-6">Add New Barbershop (Onboarding)</h2>
             
             <form onSubmit={handleAddBarbershop} className="space-y-6">
               {/* Business Information */}
@@ -789,6 +845,17 @@ Avella AI Team`;
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="+1 (555) 123-4567"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Business Voice Number (E.164)</label>
+                    <input
+                      type="tel"
+                      value={newBarbershop.businessNumber}
+                      onChange={(e) => setNewBarbershop(prev => ({...prev, businessNumber: e.target.value}))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+15551234567"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Used to route calls to your voice agent.</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
@@ -865,7 +932,10 @@ Avella AI Team`;
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-6 border-t">
+              <div className="flex justify-between items-center pt-6 border-t">
+                <div className="text-sm text-gray-600">
+                  This form creates owner user + tenant and initializes defaults.
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowAddBarbershopModal(false)}
@@ -884,6 +954,33 @@ Avella AI Team`;
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Onboarding Wizard Modal */}
+      {showAdvancedOnboarding && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h2 className="text-lg font-semibold">Full Tenant Onboarding Wizard</h2>
+              <button
+                onClick={() => setShowAdvancedOnboarding(false)}
+                className="px-3 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-0">
+              {/* Reuse existing onboarding wizard component */}
+              <OnboardingWizard 
+                onComplete={() => {
+                  // Refresh tenants list
+                  loadData();
+                }}
+                onClose={() => setShowAdvancedOnboarding(false)}
+              />
+            </div>
           </div>
         </div>
       )}

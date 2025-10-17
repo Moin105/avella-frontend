@@ -30,7 +30,7 @@ import Step8Calendar from './Step8Calendar';
 import Step9ConsentTemplates from './Step9ConsentTemplates';
 import Step10WebsiteGoLive from './Step10WebsiteGoLive';
 
-const OnboardingWizard = () => {
+const OnboardingWizard = ({ onComplete, onClose }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -166,12 +166,20 @@ const OnboardingWizard = () => {
       if (response.ok) {
         const result = await response.json();
         toast({
-          title: "Tenant Provisioned! 🎉",
-          description: "Your business is now live and ready to take appointments.",
+          title: "✅ Tenant Successfully Created!",
+          description: `Barbershop "${result?.tenant?.legalName || 'New Tenant'}" has been created and owner invited via email.`,
         });
         
-        // Redirect to dashboard or show success page
-        window.location.href = '/dashboard';
+        // Small delay to ensure toast shows before closing
+        setTimeout(() => {
+          // Close wizard and refresh data
+          if (onComplete) {
+            onComplete();
+          }
+          if (onClose) {
+            onClose();
+          }
+        }, 1500);
       } else {
         const error = await response.json();
         throw new Error(error.detail || 'Provisioning failed');
@@ -334,33 +342,39 @@ const OnboardingWizard = () => {
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar (Wrapped, no horizontal scroll) */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  currentStep >= step.id 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-600'
-                }`}>
-                  <step.icon className="h-5 w-5" />
+          <div className="flex flex-wrap gap-3 py-4">
+            {steps.map((step) => {
+              const isDone = currentStep > step.id;
+              const isActive = currentStep === step.id;
+              return (
+                <div
+                  key={step.id}
+                  className={`inline-flex items-center rounded-full border px-3 py-2 text-xs sm:text-sm transition-colors ${
+                    isActive
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : isDone
+                        ? 'border-green-600 bg-green-50 text-green-700'
+                        : 'border-gray-200 bg-gray-50 text-gray-600'
+                  }`}
+                >
+                  <div
+                    className={`mr-2 flex h-6 w-6 items-center justify-center rounded-full ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : isDone
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
+                    <step.icon className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="whitespace-nowrap">{step.title}</span>
                 </div>
-                <div className="ml-3 hidden sm:block">
-                  <p className={`text-sm font-medium ${
-                    currentStep >= step.id ? 'text-blue-600' : 'text-gray-500'
-                  }`}>
-                    {step.title}
-                  </p>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`w-16 h-1 mx-4 ${
-                    currentStep > step.id ? 'bg-blue-600' : 'bg-gray-200'
-                  }`} />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

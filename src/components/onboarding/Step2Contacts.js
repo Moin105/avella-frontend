@@ -289,7 +289,7 @@ const Step2Contacts = ({ data, onUpdate, onNext, onBack }) => {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.owner_mobile ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="+92XXXXXXXXXX"
+                placeholder="+1XXXXXXXXXX"
               />
               {errors.owner_mobile && (
                 <p className="mt-1 text-sm text-red-600">{errors.owner_mobile}</p>
@@ -396,7 +396,7 @@ const Step2Contacts = ({ data, onUpdate, onNext, onBack }) => {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.redirect_phone ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="+92XXXXXXXXXX"
+                placeholder="+1XXXXXXXXXX"
               />
               {errors.redirect_phone && (
                 <p className="mt-1 text-sm text-red-600">{errors.redirect_phone}</p>
@@ -508,7 +508,7 @@ const Step2Contacts = ({ data, onUpdate, onNext, onBack }) => {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.billing_phone ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="+92XXXXXXXXXX"
+                placeholder="+1XXXXXXXXXX"
               />
               {errors.billing_phone && (
                 <p className="mt-1 text-sm text-red-600">{errors.billing_phone}</p>

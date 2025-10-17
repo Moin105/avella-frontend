@@ -13,13 +13,13 @@ const Step1BusinessBasics = ({ data, onUpdate, onNext, onBack }) => {
   const [formData, setFormData] = useState({
     legalName: data?.tenant?.legalName || '',
     brandName: data?.tenant?.brandName || '',
-    timezone: data?.tenant?.timezone || 'Asia/Karachi',
+    timezone: data?.tenant?.timezone || 'America/New_York',
     phone: data?.tenant?.phone || '',
     email: data?.tenant?.email || '',
     address: {
       city: data?.tenant?.address?.city || '',
       state: data?.tenant?.address?.state || '',
-      country: data?.tenant?.address?.country || 'Pakistan'
+      country: data?.tenant?.address?.country || 'United States'
     }
   });
 
@@ -27,12 +27,43 @@ const Step1BusinessBasics = ({ data, onUpdate, onNext, onBack }) => {
   const [loading, setLoading] = useState(false);
 
   const timezones = [
-    { value: 'Asia/Karachi', label: 'Pakistan Standard Time (PKT)' },
     { value: 'America/New_York', label: 'Eastern Time (ET)' },
     { value: 'America/Chicago', label: 'Central Time (CT)' },
     { value: 'America/Denver', label: 'Mountain Time (MT)' },
     { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+    { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+    { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)' },
+    { value: 'America/Phoenix', label: 'Arizona Time (MST)' },
+    { value: 'America/Detroit', label: 'Eastern Time - Detroit (ET)' },
+    { value: 'America/Indiana/Indianapolis', label: 'Eastern Time - Indianapolis (ET)' },
+    { value: 'America/Kentucky/Louisville', label: 'Eastern Time - Louisville (ET)' },
+    { value: 'America/Kentucky/Monticello', label: 'Eastern Time - Monticello (ET)' },
+    { value: 'America/Indiana/Vincennes', label: 'Eastern Time - Vincennes (ET)' },
+    { value: 'America/Indiana/Winamac', label: 'Eastern Time - Winamac (ET)' },
+    { value: 'America/Indiana/Marengo', label: 'Eastern Time - Marengo (ET)' },
+    { value: 'America/Indiana/Petersburg', label: 'Eastern Time - Petersburg (ET)' },
+    { value: 'America/Indiana/Vevay', label: 'Eastern Time - Vevay (ET)' },
+    { value: 'America/Chicago', label: 'Central Time - Chicago (CT)' },
+    { value: 'America/Indiana/Tell_City', label: 'Central Time - Tell City (CT)' },
+    { value: 'America/Indiana/Knox', label: 'Central Time - Knox (CT)' },
+    { value: 'America/Menominee', label: 'Central Time - Menominee (CT)' },
+    { value: 'America/North_Dakota/Center', label: 'Central Time - Center (CT)' },
+    { value: 'America/North_Dakota/New_Salem', label: 'Central Time - New Salem (CT)' },
+    { value: 'America/North_Dakota/Beulah', label: 'Central Time - Beulah (CT)' },
+    { value: 'America/Denver', label: 'Mountain Time - Denver (MT)' },
+    { value: 'America/Boise', label: 'Mountain Time - Boise (MT)' },
+    { value: 'America/Phoenix', label: 'Mountain Time - Phoenix (MST)' },
+    { value: 'America/Los_Angeles', label: 'Pacific Time - Los Angeles (PT)' },
+    { value: 'America/Anchorage', label: 'Alaska Time - Anchorage (AKT)' },
+    { value: 'America/Juneau', label: 'Alaska Time - Juneau (AKT)' },
+    { value: 'America/Sitka', label: 'Alaska Time - Sitka (AKT)' },
+    { value: 'America/Metlakatla', label: 'Alaska Time - Metlakatla (AKT)' },
+    { value: 'America/Yakutat', label: 'Alaska Time - Yakutat (AKT)' },
+    { value: 'America/Nome', label: 'Alaska Time - Nome (AKT)' },
+    { value: 'America/Adak', label: 'Hawaii-Aleutian Time - Adak (HAT)' },
+    { value: 'Pacific/Honolulu', label: 'Hawaii Time - Honolulu (HST)' },
     { value: 'Europe/London', label: 'Greenwich Mean Time (GMT)' },
+    { value: 'Asia/Karachi', label: 'Pakistan Standard Time (PKT)' },
     { value: 'Asia/Kolkata', label: 'India Standard Time (IST)' },
     { value: 'Asia/Tokyo', label: 'Japan Standard Time (JST)' },
     { value: 'Australia/Sydney', label: 'Australian Eastern Time (AEST)' }
@@ -220,13 +251,13 @@ const Step1BusinessBasics = ({ data, onUpdate, onNext, onBack }) => {
               className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.phone ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="+92XXXXXXXXXX"
+              placeholder="+1XXXXXXXXXX"
             />
             {errors.phone && (
               <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
             )}
             <p className="mt-1 text-xs text-gray-500">
-              Format: +92XXXXXXXXXX (E.164 format)
+              Format: +1XXXXXXXXXX (E.164 format)
             </p>
           </div>
 
@@ -296,7 +327,7 @@ const Step1BusinessBasics = ({ data, onUpdate, onNext, onBack }) => {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.city ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="Karachi"
+                placeholder="New York"
               />
               {errors.city && (
                 <p className="mt-1 text-sm text-red-600">{errors.city}</p>
@@ -315,7 +346,7 @@ const Step1BusinessBasics = ({ data, onUpdate, onNext, onBack }) => {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.state ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="Sindh"
+                placeholder="New York"
               />
               {errors.state && (
                 <p className="mt-1 text-sm text-red-600">{errors.state}</p>
@@ -334,7 +365,7 @@ const Step1BusinessBasics = ({ data, onUpdate, onNext, onBack }) => {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.country ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="Pakistan"
+                placeholder="United States"
               />
               {errors.country && (
                 <p className="mt-1 text-sm text-red-600">{errors.country}</p>

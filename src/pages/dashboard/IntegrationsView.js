@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTenant } from '../../contexts/TenantContext';
+import axios from 'axios';
 import { 
   Link, 
   CheckCircle, 
@@ -24,104 +25,27 @@ const IntegrationsView = () => {
       name: 'Google Calendar',
       description: 'Sync appointments with Google Calendar for real-time availability',
       icon: Calendar,
-      status: 'connected', // connected, disconnected, error
+      status: currentTenant?.google_calendar_integration?.connected ? 'connected' : 'disconnected',
       category: 'Calendar',
-      lastSync: new Date(2025, 9, 4, 10, 30),
-      connectedAccounts: 2,
-      totalAccounts: 3,
+      lastSync: currentTenant?.google_calendar_integration?.last_sync ? new Date(currentTenant.google_calendar_integration.last_sync) : null,
       features: [
         'Real-time availability checking',
         'Automatic event creation',
-        'Two-way synchronization',
-        'Multiple calendar support'
-      ],
-      settings: {
-        autoSync: true,
-        conflictResolution: 'ask',
-        defaultCalendar: 'primary'
-      }
-    },
-    {
-      id: 'twilio-sms',
-      name: 'Twilio SMS',
-      description: 'Send automated SMS notifications for bookings and reminders',
-      icon: MessageSquare,
-      status: 'connected',
-      category: 'Communications',
-      lastUsed: new Date(2025, 9, 4, 9, 15),
-      messagesSent: 147,
-      monthlyQuota: 1000,
-      features: [
-        'Booking confirmations',
-        'Appointment reminders',
-        'Cancellation notifications',
-        'Custom message templates'
-      ],
-      settings: {
-        confirmations: true,
-        reminders: true,
-        reminderTime: '1 hour before'
-      }
-    },
-    {
-      id: 'retell-ai',
-      name: 'Retell.ai Voice Agent',
-      description: 'AI-powered voice assistant for phone bookings and customer service',
-      icon: Mic,
-      status: 'disconnected',
-      category: 'AI Assistant',
-      features: [
-        'Natural language booking',
-        'Availability checking',
-        'Appointment rescheduling',
-        '24/7 phone support'
-      ],
-      settings: {
-        enabled: false,
-        businessHours: 'follow_schedule',
-        voicePersonality: 'professional'
-      }
-    },
-    {
-      id: 'stripe',
-      name: 'Stripe Payments',
-      description: 'Accept online payments and deposits for appointments',
-      icon: Zap,
-      status: 'available',
-      category: 'Payments',
-      features: [
-        'Online payment processing',
-        'Deposit collection',
-        'Refund management',
-        'Payment analytics'
+        'Two-way synchronization'
       ]
     },
     {
-      id: 'mailgun',
-      name: 'Mailgun Email',
-      description: 'Professional email notifications and marketing campaigns',
-      icon: MessageSquare,
-      status: 'available',
-      category: 'Communications',
+      id: 'microsoft-calendar',
+      name: 'Microsoft Calendar',
+      description: 'Sync appointments with Microsoft Outlook/Office 365 Calendar',
+      icon: Calendar,
+      status: currentTenant?.microsoft_calendar_integration?.connected ? 'connected' : 'disconnected',
+      category: 'Calendar',
+      lastSync: currentTenant?.microsoft_calendar_integration?.last_sync ? new Date(currentTenant.microsoft_calendar_integration.last_sync) : null,
       features: [
-        'Transactional emails',
-        'Email templates',
-        'Delivery tracking',
-        'Marketing campaigns'
-      ]
-    },
-    {
-      id: 'zapier',
-      name: 'Zapier Automation',
-      description: 'Connect with 5000+ apps through automated workflows',
-      icon: Zap,
-      status: 'available',
-      category: 'Automation',
-      features: [
-        'Custom workflows',
-        'Multi-app connections',
-        'Trigger-based actions',
-        'Data synchronization'
+        'Real-time availability checking',
+        'Automatic event creation',
+        'Two-way synchronization'
       ]
     }
   ];
@@ -152,19 +76,41 @@ const IntegrationsView = () => {
     }
   };
 
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
   const handleConnect = async (integrationId) => {
     setLoading(prev => ({ ...prev, [integrationId]: true }));
     
     try {
-      // Simulate connection process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       if (integrationId === 'google-calendar') {
-        // TODO: Implement Google Calendar OAuth flow
-        alert('Google Calendar connection will redirect to OAuth flow');
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        const resp = await axios.post(`${API_URL}/tenant/connect-calendar`, {}, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
+        if (resp.data.authUrl) {
+          window.location.href = resp.data.authUrl;
+        } else {
+          alert('Failed to initiate Google OAuth');
+        }
       } else if (integrationId === 'retell-ai') {
         // TODO: Implement Retell.ai setup
         alert('Retell.ai voice agent setup will be configured');
+      } else if (integrationId === 'microsoft-calendar') {
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        const resp = await axios.post(`${API_URL}/tenant/connect-microsoft-calendar`, {}, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Tenant-ID': currentTenant?.id
+          }
+        });
+        if (resp.data.authUrl) {
+          window.location.href = resp.data.authUrl;
+        } else {
+          alert('Failed to initiate Microsoft OAuth');
+        }
       } else {
         alert(`${integrationId} connection will be implemented`);
       }
@@ -180,9 +126,23 @@ const IntegrationsView = () => {
       setLoading(prev => ({ ...prev, [integrationId]: true }));
       
       try {
-        // TODO: Implement disconnect logic
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        alert('Integration disconnected');
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        if (integrationId === 'google-calendar') {
+          await axios.post(`${API_URL}/tenant/disconnect-calendar`, {}, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'X-Tenant-ID': currentTenant?.id
+            }
+          });
+        } else if (integrationId === 'microsoft-calendar') {
+          await axios.post(`${API_URL}/tenant/disconnect-microsoft-calendar`, {}, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'X-Tenant-ID': currentTenant?.id
+            }
+          });
+        }
+        window.location.reload();
       } catch (error) {
         console.error('Disconnect error:', error);
       } finally {

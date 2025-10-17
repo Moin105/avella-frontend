@@ -85,20 +85,27 @@ const BarbersView = () => {
   };
 
   const getConnectionStatus = (barber) => {
-    if (!barber.calendar_integration?.connected) {
+    const hasGoogle = barber.google_calendar_integration?.connected;
+    const hasMicrosoft = barber.microsoft_calendar_integration?.connected;
+    
+    if (!hasGoogle && !hasMicrosoft) {
       return {
         icon: <XCircle className="h-5 w-5 text-red-500" />,
-        text: 'Disconnected',
+        text: 'No Calendar Connected',
         color: 'text-red-600',
         bgColor: 'bg-red-50'
       };
     }
 
-    const lastSync = new Date(barber.calendar_integration?.lastSync || new Date());
+    // Check for sync issues
+    const googleLastSync = hasGoogle ? new Date(barber.google_calendar_integration?.last_sync || new Date()) : null;
+    const microsoftLastSync = hasMicrosoft ? new Date(barber.microsoft_calendar_integration?.last_sync || new Date()) : null;
     const now = new Date();
-    const hoursSinceSync = (now - lastSync) / (1000 * 60 * 60);
+    
+    const hasSyncIssue = (googleLastSync && (now - googleLastSync) / (1000 * 60 * 60) > 24) ||
+                        (microsoftLastSync && (now - microsoftLastSync) / (1000 * 60 * 60) > 24);
 
-    if (hoursSinceSync > 24) {
+    if (hasSyncIssue) {
       return {
         icon: <AlertCircle className="h-5 w-5 text-yellow-500" />,
         text: 'Sync Issue',
@@ -107,9 +114,10 @@ const BarbersView = () => {
       };
     }
 
+    const connectedCount = (hasGoogle ? 1 : 0) + (hasMicrosoft ? 1 : 0);
     return {
       icon: <CheckCircle className="h-5 w-5 text-green-500" />,
-      text: 'Connected',
+      text: `${connectedCount} Calendar${connectedCount > 1 ? 's' : ''} Connected`,
       color: 'text-green-600',
       bgColor: 'bg-green-50'
     };
@@ -128,15 +136,31 @@ const BarbersView = () => {
   };
 
 
-  const handleConnectCalendar = async (barberId) => {
+  const handleConnectCalendar = async (barberId, provider = 'google') => {
     try {
-      // TODO: Implement Google Calendar OAuth flow
-      // const response = await axios.post(`${API_URL}/barbers/${barberId}/connect-calendar`);
-      // window.location.href = response.data.authUrl;
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const endpoint = provider === 'microsoft' 
+        ? `${API_URL}/barbers/${barberId}/connect-microsoft-calendar`
+        : `${API_URL}/barbers/${barberId}/connect-calendar`;
       
-      alert('Calendar connection flow will be implemented here');
+      const response = await axios.post(endpoint, {}, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-ID': currentTenant?.id
+        }
+      });
+      
+      if (response.data.authUrl) {
+        // Store barber ID and provider in session storage for callback
+        sessionStorage.setItem('connecting_barber_id', barberId);
+        sessionStorage.setItem('connecting_provider', provider);
+        window.location.href = response.data.authUrl;
+      } else {
+        alert('Failed to get authorization URL');
+      }
     } catch (error) {
       console.error('Error connecting calendar:', error);
+      alert('Failed to connect calendar. Please try again.');
     }
   };
 
@@ -255,7 +279,11 @@ const BarbersView = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="text-sm text-gray-600 mb-1">Connected Calendars</div>
           <div className="text-3xl font-bold text-green-600">
-            {barbers.filter(b => b.calendar_integration?.connected).length}
+            {barbers.reduce((count, b) => {
+              const googleConnected = b.google_calendar_integration?.connected ? 1 : 0;
+              const microsoftConnected = b.microsoft_calendar_integration?.connected ? 1 : 0;
+              return count + googleConnected + microsoftConnected;
+            }, 0)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -381,22 +409,12 @@ const BarbersView = () => {
                   </div>
                 </div>
 
-                {/* Action Button */}
+                {/* Calendar connection moved to Integrations page at tenant-level */}
                 <div className="mt-4">
-                  {!barber.calendar_integration?.connected ? (
-                    <button
-                      onClick={() => handleConnectCalendar(barber.id)}
-                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
-                    >
-                      <Link className="h-4 w-4" />
-                      <span>Connect Calendar</span>
-                    </button>
-                  ) : (
-                    <button className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 flex items-center justify-center space-x-2">
-                      <Settings className="h-4 w-4" />
-                      <span>Manage Calendar</span>
-                    </button>
-                  )}
+                  <a href="/dashboard/integrations" className="w-full inline-flex items-center justify-center bg-blue-50 text-blue-700 py-2 px-4 rounded-lg hover:bg-blue-100">
+                    <Link className="h-4 w-4 mr-2" />
+                    Manage Calendar Integrations
+                  </a>
                 </div>
               </div>
             </div>

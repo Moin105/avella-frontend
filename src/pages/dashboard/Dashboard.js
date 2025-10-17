@@ -23,9 +23,16 @@ const Dashboard = () => {
     );
   }
 
-  // If no tenant, show setup
+  // If no tenant, show friendly message for non-admin users
   if (!currentTenant) {
-    return <TenantSetup />;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-white border rounded-lg p-8 text-center max-w-md shadow-sm">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No tenant found</h3>
+          <p className="text-gray-600 mb-4">Please contact your platform administrator to be invited.</p>
+        </div>
+      </div>
+    );
   }
 
   return (

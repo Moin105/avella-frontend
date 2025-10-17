@@ -170,7 +170,7 @@ const Step7PhoneRouting = ({ data, onUpdate, onNext, onBack }) => {
               className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.currentNumber ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="+92XXXXXXXXXX"
+              placeholder="+1XXXXXXXXXX"
             />
             {errors.currentNumber && (
               <p className="mt-1 text-sm text-red-600">{errors.currentNumber}</p>
@@ -257,7 +257,7 @@ const Step7PhoneRouting = ({ data, onUpdate, onNext, onBack }) => {
                 className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.onCallNumber ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="+92XXXXXXXXXX"
+                placeholder="+1XXXXXXXXXX"
               />
               {errors.onCallNumber && (
                 <p className="mt-1 text-sm text-red-600">{errors.onCallNumber}</p>
