@@ -8,7 +8,10 @@ import {
   Plus,
   Filter,
   Clock,
-  User
+  User,
+  Phone,
+  Mail,
+  MapPin
 } from 'lucide-react';
 
 const CalendarView = () => {
@@ -19,6 +22,8 @@ const CalendarView = () => {
   const [appointments, setAppointments] = useState([]);
   const [barbers, setBarbers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hoveredAppointment, setHoveredAppointment] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
   const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -168,6 +173,27 @@ const CalendarView = () => {
     });
   };
 
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const handleAppointmentHover = (appointment, event) => {
+    setHoveredAppointment(appointment);
+    setTooltipPosition({
+      x: event.clientX,
+      y: event.clientY
+    });
+  };
+
+  const handleAppointmentLeave = () => {
+    setHoveredAppointment(null);
+  };
+
   const navigateDate = (direction) => {
     const newDate = new Date(currentDate);
     if (viewMode === 'day') {
@@ -239,13 +265,15 @@ const CalendarView = () => {
                   return (
                     <div
                       key={appointment.id}
-                      className="absolute left-1 right-1 rounded p-1 text-xs text-white cursor-pointer hover:opacity-90"
+                      className="absolute left-1 right-1 rounded p-1 text-xs text-white cursor-pointer hover:opacity-90 transition-opacity"
                       style={{
                         top: `${topPosition}px`,
                         height: `${height}px`,
                         backgroundColor: barber ? barber.color : '#3B82F6',
                         opacity: appointment.status === 'confirmed' ? 1 : 0.7
                       }}
+                      onMouseEnter={(e) => handleAppointmentHover(appointment, e)}
+                      onMouseLeave={handleAppointmentLeave}
                     >
                       <div className="font-medium truncate">{appointment.client}</div>
                       <div className="">{appointment.service}</div>
@@ -376,6 +404,86 @@ const CalendarView = () => {
           ))}
         </div>
       </div>
+
+      {/* Tooltip */}
+      {hoveredAppointment && (
+        <div
+          className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm"
+          style={{
+            left: `${tooltipPosition.x + 10}px`,
+            top: `${tooltipPosition.y - 10}px`,
+            transform: 'translateY(-100%)'
+          }}
+        >
+          <div className="space-y-3">
+            {/* Header */}
+            <div className="border-b border-gray-100 pb-2">
+              <h3 className="font-semibold text-gray-900 text-lg">{hoveredAppointment.client}</h3>
+              <p className="text-sm text-gray-600">{hoveredAppointment.service}</p>
+            </div>
+
+            {/* Date & Time */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2 text-sm">
+                <CalendarIcon className="h-4 w-4 text-gray-500" />
+                <span className="text-gray-700">{formatDate(hoveredAppointment.start)}</span>
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <Clock className="h-4 w-4 text-gray-500" />
+                <span className="text-gray-700">
+                  {formatTime(hoveredAppointment.start)} - {formatTime(hoveredAppointment.end)}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <User className="h-4 w-4 text-gray-500" />
+                <span className="text-gray-700">{hoveredAppointment.barber}</span>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            {(hoveredAppointment.customer_phone || hoveredAppointment.customer_email) && (
+              <div className="border-t border-gray-100 pt-2 space-y-2">
+                {hoveredAppointment.customer_phone && (
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-700">{hoveredAppointment.customer_phone}</span>
+                  </div>
+                )}
+                {hoveredAppointment.customer_email && (
+                  <div className="flex items-center space-x-2 text-sm">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    <span className="text-gray-700">{hoveredAppointment.customer_email}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notes */}
+            {hoveredAppointment.notes && (
+              <div className="border-t border-gray-100 pt-2">
+                <div className="flex items-start space-x-2 text-sm">
+                  <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <span className="text-gray-700">{hoveredAppointment.notes}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Status */}
+            <div className="border-t border-gray-100 pt-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Status:</span>
+                <span className={`text-sm font-medium px-2 py-1 rounded-full ${
+                  hoveredAppointment.status === 'confirmed' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {hoveredAppointment.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
