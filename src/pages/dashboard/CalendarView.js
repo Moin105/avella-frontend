@@ -248,8 +248,8 @@ const CalendarView = () => {
                       }}
                     >
                       <div className="font-medium truncate">{appointment.client}</div>
-                      <div className="truncate">{appointment.service}</div>
-                      <div className="truncate">{formatTime(appointment.start)}</div>
+                      <div className="">{appointment.service}</div>
+                      <div className="">{formatTime(appointment.start)}</div>
                     </div>
                   );
                 })}
