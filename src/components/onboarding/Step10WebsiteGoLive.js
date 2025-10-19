@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Globe, Calendar, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
-import { validateSlug, generateBookingPath, validateGoLiveDate, getValidationError } from '../../utils/validation';
+import { validateSlug, generateBookingPath, validateGoLiveDate, getValidationError, cleanSlug } from '../../utils/validation';
 
 const Step10WebsiteGoLive = ({ data, onUpdate, onNext, onBack }) => {
   const [formData, setFormData] = useState({
@@ -16,14 +16,17 @@ const Step10WebsiteGoLive = ({ data, onUpdate, onNext, onBack }) => {
   const [loading, setLoading] = useState(false);
 
   const handleSlugChange = (slug) => {
-    const bookingPath = generateBookingPath(slug);
-    const publicUrl = slug ? `https://app.avellabooking.com/book/${slug}` : '';
+    // Automatically convert to lowercase and clean the slug
+    const cleanedSlug = cleanSlug(slug);
+    
+    const bookingPath = generateBookingPath(cleanedSlug);
+    const publicUrl = cleanedSlug ? `https://app.avellabooking.com/book/${cleanedSlug}` : '';
     
     setFormData(prev => ({
       ...prev,
       website: {
         ...prev.website,
-        slug,
+        slug: cleanedSlug,
         bookingPath,
         publicUrl
       }

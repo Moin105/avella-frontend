@@ -50,12 +50,12 @@ export const validateIANATimezone = (timezone) => {
 
 // Common timezone mappings for user-friendly names
 export const TIMEZONE_MAPPINGS = {
-  'Pakistan Standard Time': 'Asia/Karachi',
   'Eastern Time': 'America/New_York',
   'Central Time': 'America/Chicago',
   'Mountain Time': 'America/Denver',
   'Pacific Time': 'America/Los_Angeles',
   'GMT': 'Europe/London',
+  'Pakistan Standard Time': 'Asia/Karachi',
   'IST': 'Asia/Kolkata',
   'JST': 'Asia/Tokyo',
   'AEST': 'Australia/Sydney'
@@ -104,10 +104,20 @@ export const validateTimeFormat = (time) => {
   return timeRegex.test(time);
 };
 
+// Clean and normalize slug (convert to lowercase, remove invalid chars)
+export const cleanSlug = (slug) => {
+  return slug
+    .toLowerCase() // Convert to lowercase
+    .replace(/[^a-z0-9-]/g, '') // Remove invalid characters
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+};
+
 // Validate business slug (for website URL)
 export const validateSlug = (slug) => {
+  const cleanSlugValue = cleanSlug(slug);
   const slugRegex = /^[a-z0-9-]+$/;
-  return slugRegex.test(slug) && slug.length >= 3 && slug.length <= 50;
+  return slugRegex.test(cleanSlugValue) && cleanSlugValue.length >= 3 && cleanSlugValue.length <= 50;
 };
 
 // Generate booking path from slug
@@ -117,12 +127,12 @@ export const generateBookingPath = (slug) => {
 
 // Validation error messages
 export const VALIDATION_MESSAGES = {
-  E164_PHONE: 'Phone must be in E.164 format (e.g., +92XXXXXXXXXX)',
+  E164_PHONE: 'Phone must be in E.164 format (e.g., +1XXXXXXXXXX)',
   EMAIL: 'Please enter a valid email address',
-  IANA_TIMEZONE: 'Please enter a valid timezone (e.g., Asia/Karachi)',
+  IANA_TIMEZONE: 'Please enter a valid timezone (e.g., America/New_York)',
   GO_LIVE_DATE: 'Go-live date cannot be earlier than today',
   DURATION: 'Duration must be a positive integer (minutes)',
-  PRICE: 'Price must be a non-negative integer (PKR)',
+  PRICE: 'Price must be a non-negative integer (USD)',
   TIME_FORMAT: 'Time must be in HH:MM format',
   SLUG: 'Slug must be 3-50 characters, lowercase letters, numbers, and hyphens only'
 };

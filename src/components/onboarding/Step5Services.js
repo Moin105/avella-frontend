@@ -38,7 +38,7 @@ const Step5Services = ({ data, onUpdate, onNext, onBack }) => {
       newErrors.duration = 'Duration must be a positive integer (minutes)';
     }
     if (!validatePrice(newService.price)) {
-      newErrors.price = 'Price must be a non-negative integer (PKR)';
+      newErrors.price = 'Price must be a non-negative integer (USD)';
     }
     if (!newService.category.trim()) {
       newErrors.category = 'Category is required';
@@ -365,7 +365,7 @@ const Step5Services = ({ data, onUpdate, onNext, onBack }) => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price (PKR) *
+                    Price (USD) *
                   </label>
                   <input
                     type="number"
@@ -473,7 +473,7 @@ const Step5Services = ({ data, onUpdate, onNext, onBack }) => {
                       <h4 className="font-medium text-gray-900">{service.name}</h4>
                       <span className="text-sm text-gray-500">{service.category}</span>
                       <span className="text-sm text-gray-500">{service.duration} min</span>
-                      <span className="text-sm font-medium text-green-600">PKR {service.price}</span>
+                      <span className="text-sm font-medium text-green-600">${service.price}</span>
                       {(service.bufferBeforeMin > 0 || service.bufferAfterMin > 0) && (
                         <span className="text-xs text-gray-500">
                           Buffer: {service.bufferBeforeMin}+{service.bufferAfterMin} min
@@ -531,7 +531,7 @@ const Step5Services = ({ data, onUpdate, onNext, onBack }) => {
           {formData.services.length > 0 && (
             <div className="mt-2">
               <p><strong>Categories:</strong> {[...new Set(formData.services.map(s => s.category))].join(', ')}</p>
-              <p><strong>Price Range:</strong> PKR {Math.min(...formData.services.map(s => s.price))} - PKR {Math.max(...formData.services.map(s => s.price))}</p>
+              <p><strong>Price Range:</strong> ${Math.min(...formData.services.map(s => s.price))} - ${Math.max(...formData.services.map(s => s.price))}</p>
             </div>
           )}
         </div>

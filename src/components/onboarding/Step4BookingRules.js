@@ -328,7 +328,7 @@ const Step4BookingRules = ({ data, onUpdate, onNext, onBack }) => {
             {(formData.rules.noShowPolicy.type === 'fee' || formData.rules.noShowPolicy.type === 'block') && (
               <div>
                 <label htmlFor="noShowValue" className="block text-sm font-medium text-gray-700 mb-2">
-                  {formData.rules.noShowPolicy.type === 'fee' ? 'Fee Amount (PKR)' : 'Block Duration (Days)'} *
+                  {formData.rules.noShowPolicy.type === 'fee' ? 'Fee Amount (USD)' : 'Block Duration (Days)'} *
                 </label>
                 <input
                   id="noShowValue"
@@ -346,7 +346,7 @@ const Step4BookingRules = ({ data, onUpdate, onNext, onBack }) => {
                 )}
                 <p className="mt-1 text-xs text-gray-500">
                   {formData.rules.noShowPolicy.type === 'fee' 
-                    ? 'Amount to charge for no-shows (in PKR)'
+                    ? 'Amount to charge for no-shows (in USD)'
                     : 'How many days to block the customer'
                   }
                 </p>
