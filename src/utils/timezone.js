@@ -24,30 +24,40 @@ export const convertToTenantTimezone = (utcDateTime, tenantTimezone = 'America/N
       };
     }
 
-    // Convert to tenant timezone
-    const tenantDate = new Date(utcDate.toLocaleString('en-US', { timeZone: tenantTimezone }));
-    
-    // Format date (e.g., "Oct 20, 2025")
+    // Format date in tenant timezone (e.g., "Oct 20, 2025")
     const dateOptions = { 
       year: 'numeric', 
       month: 'short', 
-      day: 'numeric' 
+      day: 'numeric',
+      timeZone: tenantTimezone
     };
-    const formattedDate = tenantDate.toLocaleDateString('en-US', dateOptions);
+    const formattedDate = utcDate.toLocaleDateString('en-US', dateOptions);
     
-    // Format time (e.g., "2:00 PM")
+    // Format time in tenant timezone (e.g., "2:00 PM")
     const timeOptions = { 
       hour: 'numeric', 
       minute: '2-digit',
-      hour12: true 
-    };
-    const formattedTime = tenantDate.toLocaleTimeString('en-US', timeOptions);
-    
-    // Full datetime string
-    const fullDateTime = tenantDate.toLocaleString('en-US', {
-      ...dateOptions,
-      ...timeOptions,
+      hour12: true,
       timeZone: tenantTimezone
+    };
+    const formattedTime = utcDate.toLocaleTimeString('en-US', timeOptions);
+    
+    // Full datetime string in tenant timezone
+    const fullDateTime = utcDate.toLocaleString('en-US', {
+      ...dateOptions,
+      ...timeOptions
+    });
+    
+    // Create a proper date object in tenant timezone for rawDate
+    const tenantDate = new Date(utcDate.toLocaleString('en-US', { timeZone: tenantTimezone }));
+
+    // Debug logging
+    console.log('Timezone conversion debug:', {
+      input: utcDateTime,
+      utcDate: utcDate.toISOString(),
+      tenantTimezone,
+      formattedTime,
+      formattedDate
     });
 
     return {
