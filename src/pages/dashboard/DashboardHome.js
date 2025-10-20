@@ -72,9 +72,23 @@ const DashboardHome = () => {
       
       // Convert appointment times to tenant timezone
       const tenantTimezone = currentTenant?.timezone || 'America/New_York';
+      console.log('Dashboard: Converting appointments with tenant timezone:', tenantTimezone);
+      
       const processedAppointments = (response.data || []).map(appointment => {
+        console.log('Dashboard: Processing appointment:', {
+          id: appointment.id,
+          start_time: appointment.start_time,
+          end_time: appointment.end_time
+        });
+        
         const startTimeConverted = convertToTenantTimezone(appointment.start_time, tenantTimezone);
         const endTimeConverted = convertToTenantTimezone(appointment.end_time, tenantTimezone);
+        
+        console.log('Dashboard: Timezone conversion result:', {
+          original: appointment.start_time,
+          converted: startTimeConverted,
+          tenantTimezone
+        });
         
         // Detect Retell appointments and set channel
         let channel = appointment.channel || 'web';

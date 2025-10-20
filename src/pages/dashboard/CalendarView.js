@@ -191,9 +191,9 @@ const CalendarView = () => {
           return null;
         }
 
-        // Convert for display
-        const startConv = convertToTenantTimezone(start.toISOString(), tenantTimezone);
-        const endConv = convertToTenantTimezone(end.toISOString(), tenantTimezone);
+        // Convert for display - use same approach as dashboard
+        const startConv = convertToTenantTimezone(apt.start_time, tenantTimezone);
+        const endConv = convertToTenantTimezone(apt.end_time, tenantTimezone);
 
         // Detect channel (Retell etc.)
         let channel = apt.channel || 'web';
@@ -222,7 +222,10 @@ const CalendarView = () => {
           displayDate: startConv.date,
           displayDateTime: startConv.fullDateTime,
           timezone: tenantTimezone,
-          channel
+          channel,
+          // Add original time fields for timezone conversion
+          start_time: apt.start_time,
+          end_time: apt.end_time
         };
       }).filter(Boolean);
 
@@ -236,19 +239,30 @@ const CalendarView = () => {
     }
   };
 
-  // 30-min slots (from AA)
-  const timeSlots = Array.from({ length: 26 * 2 }, (_, i) => {
-    const hour = Math.floor(i / 2) + 8; // 8am start to 20pm end inclusive
-    const minute = (i % 2) * 30;
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = ((hour % 12) === 0) ? 12 : (hour % 12);
-    const displayMinute = minute.toString().padStart(2, '0');
-    return {
-      time: `${displayHour}:${displayMinute} ${period}`,
-      hour,
-      minute
-    };
-  });
+  // Generate time slots based on tenant availability
+  const generateTimeSlots = () => {
+    // Default working hours (can be customized based on tenant settings)
+    const startHour = 8; // 8 AM
+    const endHour = 20;  // 8 PM
+    const slotDuration = 30; // 30 minutes
+    
+    const slots = [];
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += slotDuration) {
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = ((hour % 12) === 0) ? 12 : (hour % 12);
+        const displayMinute = minute.toString().padStart(2, '0');
+        slots.push({
+          time: `${displayHour}:${displayMinute} ${period}`,
+          hour,
+          minute
+        });
+      }
+    }
+    return slots;
+  };
+  
+  const timeSlots = generateTimeSlots();
 
   const getAppointmentsForDay = (date) => {
     return appointments.filter(apt => {
@@ -276,7 +290,17 @@ const CalendarView = () => {
   const handleSlotClick = (date, hour, minute) => {
     const slotTime = new Date(date);
     slotTime.setHours(hour, minute, 0, 0);
-    setSelectedSlot({ date, time: slotTime });
+    
+    // Convert to tenant timezone for display
+    const tenantTimezone = currentTenant?.timezone || 'America/New_York';
+    const convertedTime = convertToTenantTimezone(slotTime.toISOString(), tenantTimezone);
+    
+    setSelectedSlot({ 
+      date, 
+      time: slotTime,
+      displayTime: convertedTime.time,
+      displayDate: convertedTime.date
+    });
     setSelectedAppointment(null);
     setShowAppointmentModal(true);
   };
@@ -405,8 +429,19 @@ const CalendarView = () => {
               {getAppointmentsForDay(currentDay).map((appointment) => {
                 if (selectedBarber !== 'all' && appointment.barberId !== selectedBarber) return null;
 
-                const startHour = appointment.start.getHours();
-                const startMinute = appointment.start.getMinutes();
+                // Use timezone-converted times for positioning - same approach as dashboard
+                const tenantTimezone = currentTenant?.timezone || 'America/New_York';
+                const startConv = convertToTenantTimezone(appointment.start_time, tenantTimezone);
+                const endConv = convertToTenantTimezone(appointment.end_time, tenantTimezone);
+                
+                // Parse the converted time to get hours and minutes
+                const [time, period] = startConv.time.split(' ');
+                const [hours, minutes] = time.split(':');
+                let startHour = parseInt(hours);
+                if (period === 'PM' && startHour !== 12) startHour += 12;
+                if (period === 'AM' && startHour === 12) startHour = 0;
+                
+                const startMinute = parseInt(minutes);
                 const duration = (appointment.end - appointment.start) / (1000 * 60);
 
                 const topPosition = ((startHour - 8) * 64) + (startMinute * 64 / 60);
@@ -433,7 +468,7 @@ const CalendarView = () => {
                       <>
                         <div className="text-xs opacity-90 truncate">{appointment.service}</div>
                         {height > 70 && (
-                          <div className="text-xs opacity-90 mt-1 truncate">{formatTime(appointment.start)} - {formatTime(appointment.end)}</div>
+                          <div className="text-xs opacity-90 mt-1 truncate">{startConv.time} - {endConv.time}</div>
                         )}
                       </>
                     )}
@@ -495,8 +530,19 @@ const CalendarView = () => {
                 {getAppointmentsForDay(day).map((appointment) => {
                   if (selectedBarber !== 'all' && appointment.barberId !== selectedBarber) return null;
 
-                  const startHour = appointment.start.getHours();
-                  const startMinute = appointment.start.getMinutes();
+                  // Use timezone-converted times for positioning - same approach as dashboard
+                  const tenantTimezone = currentTenant?.timezone || 'America/New_York';
+                  const startConv = convertToTenantTimezone(appointment.start_time, tenantTimezone);
+                  const endConv = convertToTenantTimezone(appointment.end_time, tenantTimezone);
+                  
+                  // Parse the converted time to get hours and minutes
+                  const [time, period] = startConv.time.split(' ');
+                  const [hours, minutes] = time.split(':');
+                  let startHour = parseInt(hours);
+                  if (period === 'PM' && startHour !== 12) startHour += 12;
+                  if (period === 'AM' && startHour === 12) startHour = 0;
+                  
+                  const startMinute = parseInt(minutes);
                   const duration = (appointment.end - appointment.start) / (1000 * 60); // minutes
 
                   const topPosition = ((startHour - 8) * 64) + (startMinute * 64 / 60);
@@ -825,9 +871,9 @@ const CalendarView = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Selected Time</label>
                     <p className="text-gray-900 bg-blue-50 p-2 rounded">
-                      {selectedSlot.date.toLocaleDateString('en-US', { 
+                      {selectedSlot.displayDate || selectedSlot.date.toLocaleDateString('en-US', { 
                         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-                      })} at {formatTime(selectedSlot.time)}
+                      })} at {selectedSlot.displayTime || formatTime(selectedSlot.time)}
                     </p>
                   </div>
 
