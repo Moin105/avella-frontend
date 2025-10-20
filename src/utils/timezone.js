@@ -10,8 +10,15 @@
  */
 export const convertToTenantTimezone = (utcDateTime, tenantTimezone = 'America/New_York') => {
   try {
+    // Ensure the datetime string is properly formatted as UTC
+    let utcDateTimeStr = utcDateTime;
+    if (!utcDateTimeStr.endsWith('Z') && !utcDateTimeStr.includes('+') && !utcDateTimeStr.includes('-')) {
+      // If no timezone info, assume it's UTC
+      utcDateTimeStr = utcDateTimeStr + 'Z';
+    }
+    
     // Create date object from UTC datetime
-    const utcDate = new Date(utcDateTime);
+    const utcDate = new Date(utcDateTimeStr);
     
     // Check if date is valid
     if (isNaN(utcDate.getTime())) {
@@ -54,10 +61,15 @@ export const convertToTenantTimezone = (utcDateTime, tenantTimezone = 'America/N
     // Debug logging
     console.log('Timezone conversion debug:', {
       input: utcDateTime,
+      utcDateTimeStr,
       utcDate: utcDate.toISOString(),
       tenantTimezone,
       formattedTime,
-      formattedDate
+      formattedDate,
+      utcHour: utcDate.getUTCHours(),
+      utcMinute: utcDate.getUTCMinutes(),
+      localHour: utcDate.getHours(),
+      localMinute: utcDate.getMinutes()
     });
 
     return {
