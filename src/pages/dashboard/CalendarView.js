@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '../../contexts/TenantContext';
 import axios from 'axios';
+import { convertToTenantTimezone, getTimezoneDisplayName } from '../../utils/timezone';
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -64,21 +65,39 @@ const CalendarView = () => {
         }
       });
       
-      // Transform API data to calendar format
-      const transformedAppointments = response.data.map(apt => ({
-        id: apt.id,
-        title: `${apt.service?.name || 'Service'} - ${apt.client?.name || apt.customer?.name || 'Client'}`,
-        start: new Date(apt.start_time),
-        end: new Date(apt.end_time),
-        barber: apt.barber?.name || 'Unknown',
-        barber_id: apt.barber_id,
-        client: apt.client?.name || apt.customer?.name || 'Client',
-        service: apt.service?.name || 'Service',
-        status: apt.status,
-        customer_phone: apt.client?.phone || apt.customer?.phone,
-        customer_email: apt.client?.email || apt.customer?.email,
-        notes: apt.notes
-      }));
+      // Transform API data to calendar format with timezone conversion
+      const tenantTimezone = currentTenant?.timezone || 'America/New_York';
+      const transformedAppointments = response.data.map(apt => {
+        const startTimeConverted = convertToTenantTimezone(apt.start_time, tenantTimezone);
+        const endTimeConverted = convertToTenantTimezone(apt.end_time, tenantTimezone);
+        
+        // Detect Retell appointments and set channel
+        let channel = apt.channel || 'web';
+        if (apt.booking_hash && apt.booking_hash.startsWith('retell_')) {
+          channel = 'ai_agent';
+        }
+        
+        return {
+          id: apt.id,
+          title: `${apt.service?.name || 'Service'} - ${apt.client?.name || apt.customer?.name || 'Client'}`,
+          start: new Date(apt.start_time), // Keep original for calendar library
+          end: new Date(apt.end_time), // Keep original for calendar library
+          barber: apt.barber?.name || 'Unknown',
+          barber_id: apt.barber_id,
+          client: apt.client?.name || apt.customer?.name || 'Client',
+          service: apt.service?.name || 'Service',
+          status: apt.status,
+          customer_phone: apt.client?.phone || apt.customer?.phone,
+          customer_email: apt.client?.email || apt.customer?.email,
+          notes: apt.notes,
+          // Add timezone-converted display values
+          displayTime: startTimeConverted.time,
+          displayDate: startTimeConverted.date,
+          displayDateTime: startTimeConverted.fullDateTime,
+          timezone: tenantTimezone,
+          channel: channel
+        };
+      });
       
       setAppointments(transformedAppointments);
     } catch (error) {

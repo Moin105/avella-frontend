@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTenant } from '../../contexts/TenantContext';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
+import { convertToTenantTimezone, getTimezoneDisplayName } from '../../utils/timezone';
 import { 
   Calendar, 
   Users, 
@@ -68,7 +69,31 @@ const DashboardHome = () => {
           'X-Tenant-ID': currentTenant?.id
         }
       });
-      setAppointments(response.data || []);
+      
+      // Convert appointment times to tenant timezone
+      const tenantTimezone = currentTenant?.timezone || 'America/New_York';
+      const processedAppointments = (response.data || []).map(appointment => {
+        const startTimeConverted = convertToTenantTimezone(appointment.start_time, tenantTimezone);
+        const endTimeConverted = convertToTenantTimezone(appointment.end_time, tenantTimezone);
+        
+        // Detect Retell appointments and set channel
+        let channel = appointment.channel || 'web';
+        if (appointment.booking_hash && appointment.booking_hash.startsWith('retell_')) {
+          channel = 'ai_agent';
+        }
+        
+        return {
+          ...appointment,
+          time: startTimeConverted.time,
+          date: startTimeConverted.date,
+          fullDateTime: startTimeConverted.fullDateTime,
+          endTime: endTimeConverted.time,
+          timezone: tenantTimezone,
+          channel: channel
+        };
+      });
+      
+      setAppointments(processedAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
       setAppointments([]);
@@ -176,7 +201,8 @@ const DashboardHome = () => {
       case 'call': return <Phone className="h-4 w-4" />;
       case 'sms': return <MessageSquare className="h-4 w-4" />;
       case 'web': return <Globe className="h-4 w-4" />;
-      case 'front d': return <Monitor className="h-4 w-4" />;
+      case 'front_desk': return <Monitor className="h-4 w-4" />;
+      case 'ai_agent': return <Phone className="h-4 w-4" />; // AI Agent uses phone icon
       default: return <Globe className="h-4 w-4" />;
     }
   };
@@ -271,7 +297,7 @@ const DashboardHome = () => {
             
             <div className="flex items-center space-x-2 ml-auto">
               <span className="text-sm text-gray-600">Timezone:</span>
-              <span className="text-sm text-gray-900">{currentTenant?.timezone || 'America/New_York'}</span>
+              <span className="text-sm text-gray-900">{getTimezoneDisplayName(currentTenant?.timezone || 'America/New_York')}</span>
             </div>
           </div>
 

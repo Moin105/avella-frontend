@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTenant } from '../../contexts/TenantContext';
 import axios from 'axios';
+import { convertToTenantTimezone, getTimezoneDisplayName } from '../../utils/timezone';
 import { 
   Calendar, 
   Filter, 
@@ -65,7 +66,31 @@ const BookingsView = () => {
           'X-Tenant-ID': currentTenant?.id
         }
       });
-      setAppointments(response.data);
+      
+      // Convert appointment times to tenant timezone
+      const tenantTimezone = currentTenant?.timezone || 'America/New_York';
+      const processedAppointments = (response.data || []).map(appointment => {
+        const startTimeConverted = convertToTenantTimezone(appointment.start_time, tenantTimezone);
+        const endTimeConverted = convertToTenantTimezone(appointment.end_time, tenantTimezone);
+        
+        // Detect Retell appointments and set channel
+        let channel = appointment.channel || 'web';
+        if (appointment.booking_hash && appointment.booking_hash.startsWith('retell_')) {
+          channel = 'ai_agent';
+        }
+        
+        return {
+          ...appointment,
+          time: startTimeConverted.time,
+          date: startTimeConverted.date,
+          fullDateTime: startTimeConverted.fullDateTime,
+          endTime: endTimeConverted.time,
+          timezone: tenantTimezone,
+          channel: channel
+        };
+      });
+      
+      setAppointments(processedAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
       // Show empty state if API fails
@@ -214,6 +239,7 @@ const BookingsView = () => {
       case 'sms': return <MessageSquare className="h-4 w-4" />;
       case 'web': return <Globe className="h-4 w-4" />;
       case 'front_desk': return <Monitor className="h-4 w-4" />;
+      case 'ai_agent': return <Phone className="h-4 w-4" />; // AI Agent uses phone icon
       default: return <Globe className="h-4 w-4" />;
     }
   };
@@ -225,6 +251,7 @@ const BookingsView = () => {
       case 'call': return 'Call';
       case 'sms': return 'SMS';
       case 'web': return 'Web';
+      case 'ai_agent': return 'AI Agent/Call';
       default: return channel;
     }
   };
