@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTenant } from '../../contexts/TenantContext';
@@ -7,6 +8,7 @@ import {
   ChevronLeft, 
   ChevronRight,
   Plus,
+  Filter,
   Clock,
   User,
   Phone,
@@ -32,12 +34,29 @@ const CalendarView = () => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  const API_URL = `${process.env.REACT_APP_BACKEND_URL}/api`;
+  // Create form (from AA)
+  const [appointmentForm, setAppointmentForm] = useState({
+    client_name: '',
+    client_phone: '',
+    client_email: '',
+    service: '',
+    barber_id: '',
+    duration: 30,
+    notes: '',
+    send_sms: true
+  });
+  const [services, setServices] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [formLoading, setFormLoading] = useState(false);
 
-  // Load barbers
+  const API_URL = `${process.env.REACT_APP_BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL}/api`;
+
+  // Load barbers + services + clients
   useEffect(() => {
     if (currentTenant) {
       loadBarbers();
+      loadServices();
+      loadClients();
     }
   }, [currentTenant]);
 
@@ -48,14 +67,36 @@ const CalendarView = () => {
     }
   }, [currentTenant, currentDate, viewMode]);
 
+  const authHeaders = () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    return {
+      Authorization: `Bearer ${token}`,
+      'X-Tenant-ID': currentTenant?.id
+    };
+  };
+
+  const loadServices = async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/services`, { headers: authHeaders() });
+      setServices(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading services:', err);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      const { data } = await axios.get(`${API_URL}/clients`, { headers: authHeaders() });
+      setClients(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error loading clients:', err);
+    }
+  };
+
   const loadBarbers = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
       const response = await axios.get(`${API_URL}/barbers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-Tenant-ID': currentTenant?.id
-        }
+        headers: authHeaders()
       });
 
       const colors = ['#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16', '#F97316'];
@@ -117,8 +158,7 @@ const CalendarView = () => {
 
       const response = await axios.get(`${API_URL}/appointments`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-Tenant-ID': currentTenant?.id,
+          ...authHeaders(),
           'Content-Type': 'application/json'
         },
         params: {
@@ -196,13 +236,17 @@ const CalendarView = () => {
     }
   };
 
-  const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    const hour = i;
+  // 30-min slots (from AA)
+  const timeSlots = Array.from({ length: 26 * 2 }, (_, i) => {
+    const hour = Math.floor(i / 2) + 8; // 8am start to 20pm end inclusive
+    const minute = (i % 2) * 30;
     const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const displayHour = ((hour % 12) === 0) ? 12 : (hour % 12);
+    const displayMinute = minute.toString().padStart(2, '0');
     return {
-      time: `${displayHour}:00 ${period}`,
-      hour: hour
+      time: `${displayHour}:${displayMinute} ${period}`,
+      hour,
+      minute
     };
   });
 
@@ -256,6 +300,46 @@ const CalendarView = () => {
     }
   };
 
+  // Create appointment (from AA, adapted to axios + headers)
+  const handleCreateAppointment = async () => {
+    if (!selectedSlot) return;
+    try {
+      setFormLoading(true);
+      const payload = {
+        customer_name: appointmentForm.client_name,
+        customer_phone: appointmentForm.client_phone,
+        customer_email: appointmentForm.client_email,
+        staff_id: appointmentForm.barber_id,
+        service: appointmentForm.service,
+        date: selectedSlot.date.toISOString().split('T')[0],
+        time: selectedSlot.time.toTimeString().substring(0, 5),
+        duration: appointmentForm.duration,
+        notes: appointmentForm.notes,
+        status: 'confirmed',
+        send_sms: appointmentForm.send_sms
+      };
+      await axios.post(`${API_URL}/appointments`, payload, { headers: { ...authHeaders(), 'Content-Type': 'application/json' } });
+      await loadAppointments();
+      setShowAppointmentModal(false);
+      setSelectedSlot(null);
+      setAppointmentForm({
+        client_name: '',
+        client_phone: '',
+        client_email: '',
+        service: '',
+        barber_id: '',
+        duration: 30,
+        notes: '',
+        send_sms: true
+      });
+    } catch (err) {
+      console.error('Error creating appointment:', err);
+      alert('Failed to create appointment');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const handleAppointmentHover = (appointment, event) => {
     setHoveredAppointment(appointment);
     setTooltipPosition({ x: event.clientX, y: event.clientY });
@@ -283,8 +367,8 @@ const CalendarView = () => {
           {/* Time column */}
           <div className="bg-white">
             <div className="h-16 border-b border-gray-200 sticky top-0 bg-white z-10"></div>
-            {timeSlots.filter(slot => slot.hour >= 8 && slot.hour <= 20).map((slot, index) => (
-              <div key={index} className="h-20 border-b border-gray-200 p-2 text-sm text-gray-500">
+            {timeSlots.filter((slot, index) => slot.minute === 0).map((slot, index) => (
+              <div key={index} className="h-16 border-b border-gray-200 p-2 text-sm text-gray-500">
                 {slot.time}
               </div>
             ))}
@@ -306,14 +390,14 @@ const CalendarView = () => {
               </div>
             </div>
 
-            {/* Time slots */}
-            <div className="relative" style={{ height: `${13 * 80}px` }}>
-              {timeSlots.filter(slot => slot.hour >= 8 && slot.hour <= 20).map((slot, index) => (
+            {/* Time slots (30 min) */}
+            <div className="relative" style={{ height: `${26 * 32}px` }}>
+              {timeSlots.map((slot, index) => (
                 <div 
                   key={index} 
-                  className="absolute w-full h-20 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors" 
-                  style={{ top: `${index * 80}px` }}
-                  onClick={() => handleSlotClick(currentDay, slot.hour, 0)}
+                  className="absolute w-full h-8 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors" 
+                  style={{ top: `${index * 32}px` }}
+                  onClick={() => handleSlotClick(currentDay, slot.hour, slot.minute)}
                 />
               ))}
 
@@ -325,15 +409,15 @@ const CalendarView = () => {
                 const startMinute = appointment.start.getMinutes();
                 const duration = (appointment.end - appointment.start) / (1000 * 60);
 
-                const topPosition = ((startHour - 8) * 80) + (startMinute * 80 / 60);
-                const height = (duration * 80 / 60);
+                const topPosition = ((startHour - 8) * 64) + (startMinute * 64 / 60);
+                const height = Math.max((duration * 64 / 60), 40);
 
                 const barber = barbers.find(b => b.id === appointment.barberId || b.name === appointment.barber);
 
                 return (
                   <div
                     key={appointment.id}
-                    className="absolute left-2 right-2 rounded-lg p-3 text-sm text-white cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-md"
+                    className="absolute left-2 right-2 rounded-lg p-3 text-sm text-white cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-md overflow-hidden"
                     style={{
                       top: `${topPosition}px`,
                       height: `${height}px`,
@@ -344,9 +428,15 @@ const CalendarView = () => {
                     onMouseEnter={(e) => handleAppointmentHover(appointment, e)}
                     onMouseLeave={handleAppointmentLeave}
                   >
-                    <div className="font-semibold">{appointment.client}</div>
-                    <div className="text-xs opacity-90">{appointment.service}</div>
-                    <div className="text-xs opacity-90 mt-1">{formatTime(appointment.start)} - {formatTime(appointment.end)}</div>
+                    <div className="font-semibold truncate">{appointment.client}</div>
+                    {height > 55 && (
+                      <>
+                        <div className="text-xs opacity-90 truncate">{appointment.service}</div>
+                        {height > 70 && (
+                          <div className="text-xs opacity-90 mt-1 truncate">{formatTime(appointment.start)} - {formatTime(appointment.end)}</div>
+                        )}
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -366,7 +456,7 @@ const CalendarView = () => {
           {/* Time column */}
           <div className="bg-white">
             <div className="h-16 border-b border-gray-200"></div>
-            {timeSlots.filter(slot => slot.hour >= 8 && slot.hour <= 20).map((slot, index) => (
+            {timeSlots.filter(slot => slot.minute === 0).map((slot, index) => (
               <div key={index} className="h-16 border-b border-gray-200 p-2 text-xs text-gray-500">
                 {slot.time}
               </div>
@@ -390,14 +480,14 @@ const CalendarView = () => {
                 </div>
               </div>
 
-              {/* Time slots */}
-              <div className="relative" style={{ height: `${13 * 64}px` }}>
-                {timeSlots.filter(slot => slot.hour >= 8 && slot.hour <= 20).map((slot, index) => (
+              {/* Time slots (30 min) */}
+              <div className="relative" style={{ height: `${26 * 64 / 2}px` }}>
+                {timeSlots.map((slot, index) => (
                   <div 
                     key={index} 
-                    className="absolute w-full h-16 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors" 
-                    style={{ top: `${index * 64}px` }}
-                    onClick={() => handleSlotClick(day, slot.hour, 0)}
+                    className="absolute w-full h-8 border-b border-gray-100 hover:bg-blue-50 cursor-pointer transition-colors" 
+                    style={{ top: `${index * 32}px` }}
+                    onClick={() => handleSlotClick(day, slot.hour, slot.minute)}
                   />
                 ))}
 
@@ -410,14 +500,14 @@ const CalendarView = () => {
                   const duration = (appointment.end - appointment.start) / (1000 * 60); // minutes
 
                   const topPosition = ((startHour - 8) * 64) + (startMinute * 64 / 60);
-                  const height = (duration * 64 / 60);
+                  const height = Math.max((duration * 64 / 60), 30);
 
                   const barber = barbers.find(b => b.id === appointment.barberId || b.name === appointment.barber);
 
                   return (
                     <div
                       key={appointment.id}
-                      className="absolute left-1 right-1 rounded p-1 text-xs text-white cursor-pointer hover:opacity-90 transition-opacity z-10"
+                      className="absolute left-1 right-1 rounded p-1 text-xs text-white cursor-pointer hover:opacity-90 transition-opacity z-10 overflow-hidden"
                       style={{
                         top: `${topPosition}px`,
                         height: `${height}px`,
@@ -430,8 +520,12 @@ const CalendarView = () => {
                       onMouseLeave={handleAppointmentLeave}
                     >
                       <div className="font-medium truncate">{appointment.client}</div>
-                      <div className="truncate">{appointment.service}</div>
-                      <div className="truncate">{formatTime(appointment.start)}</div>
+                      {height > 40 && (
+                        <>
+                          <div className="truncate">{appointment.service}</div>
+                          {height > 55 && <div className="truncate">{formatTime(appointment.start)}</div>}
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -595,7 +689,14 @@ const CalendarView = () => {
             ))}
           </div>
 
-          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700">
+          <button 
+            onClick={() => {
+              setSelectedSlot({ date: new Date(), time: new Date() });
+              setSelectedAppointment(null);
+              setShowAppointmentModal(true);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+          >
             <Plus className="h-4 w-4" />
             <span>New Appointment</span>
           </button>
@@ -717,29 +818,148 @@ const CalendarView = () => {
                 </div>
               </>
             ) : selectedSlot ? (
-              /* Create New Appointment */
+              /* Create New Appointment (from AA) */
               <>
                 <h2 className="text-xl font-semibold mb-4">Create New Appointment</h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Selected Time</label>
-                    <p className="text-gray-900">
-                      {selectedSlot.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at {formatTime(selectedSlot.time)}
+                    <p className="text-gray-900 bg-blue-50 p-2 rounded">
+                      {selectedSlot.date.toLocaleDateString('en-US', { 
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                      })} at {formatTime(selectedSlot.time)}
                     </p>
                   </div>
-                  <p className="text-gray-600 text-sm">
-                    Appointment creation form will be implemented here
-                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
+                      <input
+                        type="text"
+                        value={appointmentForm.client_name}
+                        onChange={(e) => setAppointmentForm({...appointmentForm, client_name: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="John Doe"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                      <input
+                        type="tel"
+                        value={appointmentForm.client_phone}
+                        onChange={(e) => setAppointmentForm({...appointmentForm, client_phone: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="+1234567890"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={appointmentForm.client_email}
+                      onChange={(e) => setAppointmentForm({...appointmentForm, client_email: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="john@example.com"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Service *</label>
+                      <select
+                        value={appointmentForm.service}
+                        onChange={(e) => setAppointmentForm({...appointmentForm, service: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Select service</option>
+                        {services.map(service => (
+                          <option key={service.id} value={service.name}>{service.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text sm font-medium text-gray-700 mb-1">Barber *</label>
+                      <select
+                        value={appointmentForm.barber_id}
+                        onChange={(e) => setAppointmentForm({...appointmentForm, barber_id: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Select barber</option>
+                        {barbers.filter(b => b.id !== 'all').map(barber => (
+                          <option key={barber.id} value={barber.id}>{barber.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                    <input
+                      type="number"
+                      value={appointmentForm.duration}
+                      onChange={(e) => setAppointmentForm({...appointmentForm, duration: parseInt(e.target.value || '0') || 30})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min="15"
+                      step="15"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea
+                      value={appointmentForm.notes}
+                      onChange={(e) => setAppointmentForm({...appointmentForm, notes: e.target.value})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="Any special requests or notes..."
+                    />
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={appointmentForm.send_sms}
+                      onChange={(e) => setAppointmentForm({...appointmentForm, send_sms: e.target.checked})}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm text-gray-700">
+                      Send SMS confirmation to client
+                    </label>
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-2 mt-6">
                   <button
-                    onClick={() => { setShowAppointmentModal(false); setSelectedSlot(null); }}
+                    onClick={() => {
+                      setShowAppointmentModal(false);
+                      setSelectedSlot(null);
+                      setAppointmentForm({
+                        client_name: '',
+                        client_phone: '',
+                        client_email: '',
+                        service: '',
+                        barber_id: '',
+                        duration: 30,
+                        notes: '',
+                        send_sms: true
+                      });
+                    }}
                     className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    disabled={formLoading}
                   >
-                    Close
+                    Cancel
                   </button>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Create Appointment
+                  <button
+                    onClick={handleCreateAppointment}
+                    disabled={formLoading || !appointmentForm.client_name || !appointmentForm.client_phone || !appointmentForm.service || !appointmentForm.barber_id}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    {formLoading ? 'Creating...' : 'Create Appointment'}
                   </button>
                 </div>
               </>
@@ -841,11 +1061,7 @@ const CalendarView = () => {
             <div className="border-t border-gray-100 pt-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Status:</span>
-                <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                  hoveredAppointment.status === 'confirmed' 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
+                <span className={`text-sm font-medium px-2 py-1 rounded-full ${hoveredAppointment.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                   {hoveredAppointment.status}
                 </span>
               </div>
