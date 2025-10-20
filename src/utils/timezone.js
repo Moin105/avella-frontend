@@ -10,10 +10,19 @@
  */
 export const convertToTenantTimezone = (utcDateTime, tenantTimezone = 'America/New_York') => {
   try {
-    // Ensure the datetime string is properly formatted as UTC
+    // Robust timezone detection: check for explicit timezone indicators
+    // ISO strings without timezone info (e.g., "2025-10-22T18:00:00") are treated as UTC
+    // ISO strings with timezone info (e.g., "2025-10-22T18:00:00Z" or "2025-10-22T18:00:00+00:00") use their offset
     let utcDateTimeStr = utcDateTime;
-    if (!utcDateTimeStr.endsWith('Z') && !utcDateTimeStr.includes('+') && !utcDateTimeStr.includes('-')) {
-      // If no timezone info, assume it's UTC
+    
+    // Check if the string already has timezone information
+    const hasTimezoneInfo = utcDateTimeStr.endsWith('Z') || 
+                           utcDateTimeStr.includes('+') || 
+                           utcDateTimeStr.includes('-') ||
+                           /[+-]\d{2}:\d{2}$/.test(utcDateTimeStr);
+    
+    if (!hasTimezoneInfo) {
+      // If no timezone info, treat as UTC by appending 'Z'
       utcDateTimeStr = utcDateTimeStr + 'Z';
     }
     
@@ -61,6 +70,7 @@ export const convertToTenantTimezone = (utcDateTime, tenantTimezone = 'America/N
     // Debug logging
     console.log('Timezone conversion debug:', {
       input: utcDateTime,
+      hasTimezoneInfo,
       utcDateTimeStr,
       utcDate: utcDate.toISOString(),
       tenantTimezone,
@@ -99,7 +109,21 @@ export const convertToTenantTimezone = (utcDateTime, tenantTimezone = 'America/N
  */
 export const formatInTenantTimezone = (utcDateTime, tenantTimezone = 'America/New_York', options = {}) => {
   try {
-    const utcDate = new Date(utcDateTime);
+    // Use the same robust timezone detection as convertToTenantTimezone
+    let utcDateTimeStr = utcDateTime;
+    
+    // Check if the string already has timezone information
+    const hasTimezoneInfo = utcDateTimeStr.endsWith('Z') || 
+                           utcDateTimeStr.includes('+') || 
+                           utcDateTimeStr.includes('-') ||
+                           /[+-]\d{2}:\d{2}$/.test(utcDateTimeStr);
+    
+    if (!hasTimezoneInfo) {
+      // If no timezone info, treat as UTC by appending 'Z'
+      utcDateTimeStr = utcDateTimeStr + 'Z';
+    }
+    
+    const utcDate = new Date(utcDateTimeStr);
     
     if (isNaN(utcDate.getTime())) {
       return 'Invalid Date';
@@ -153,7 +177,21 @@ export const getTimezoneAbbreviation = (tenantTimezone = 'America/New_York') => 
  */
 export const isTodayInTenantTimezone = (utcDateTime, tenantTimezone = 'America/New_York') => {
   try {
-    const utcDate = new Date(utcDateTime);
+    // Use the same robust timezone detection as convertToTenantTimezone
+    let utcDateTimeStr = utcDateTime;
+    
+    // Check if the string already has timezone information
+    const hasTimezoneInfo = utcDateTimeStr.endsWith('Z') || 
+                           utcDateTimeStr.includes('+') || 
+                           utcDateTimeStr.includes('-') ||
+                           /[+-]\d{2}:\d{2}$/.test(utcDateTimeStr);
+    
+    if (!hasTimezoneInfo) {
+      // If no timezone info, treat as UTC by appending 'Z'
+      utcDateTimeStr = utcDateTimeStr + 'Z';
+    }
+    
+    const utcDate = new Date(utcDateTimeStr);
     const tenantDate = new Date(utcDate.toLocaleString('en-US', { timeZone: tenantTimezone }));
     const today = new Date();
     const tenantToday = new Date(today.toLocaleString('en-US', { timeZone: tenantTimezone }));
@@ -173,7 +211,21 @@ export const isTodayInTenantTimezone = (utcDateTime, tenantTimezone = 'America/N
  */
 export const getRelativeTime = (utcDateTime, tenantTimezone = 'America/New_York') => {
   try {
-    const utcDate = new Date(utcDateTime);
+    // Use the same robust timezone detection as convertToTenantTimezone
+    let utcDateTimeStr = utcDateTime;
+    
+    // Check if the string already has timezone information
+    const hasTimezoneInfo = utcDateTimeStr.endsWith('Z') || 
+                           utcDateTimeStr.includes('+') || 
+                           utcDateTimeStr.includes('-') ||
+                           /[+-]\d{2}:\d{2}$/.test(utcDateTimeStr);
+    
+    if (!hasTimezoneInfo) {
+      // If no timezone info, treat as UTC by appending 'Z'
+      utcDateTimeStr = utcDateTimeStr + 'Z';
+    }
+    
+    const utcDate = new Date(utcDateTimeStr);
     const tenantDate = new Date(utcDate.toLocaleString('en-US', { timeZone: tenantTimezone }));
     const today = new Date();
     const tenantToday = new Date(today.toLocaleString('en-US', { timeZone: tenantTimezone }));
