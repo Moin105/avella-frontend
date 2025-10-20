@@ -8,7 +8,12 @@ import {
   Settings, 
   LogOut, 
   Building, 
-  ChevronDown 
+  ChevronDown,
+  LayoutDashboard,
+  CalendarCheck,
+  Scissors,
+  Briefcase,
+  Plug
 } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
@@ -22,14 +27,14 @@ const DashboardLayout = ({ children }) => {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Calendar },
-    { name: 'Bookings', href: '/dashboard/bookings', icon: Calendar },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Bookings', href: '/dashboard/bookings', icon: CalendarCheck },
     { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
     { name: 'Clients', href: '/dashboard/clients', icon: Users },
-    { name: 'Barbers', href: '/dashboard/barbers', icon: Users },
-    { name: 'Services', href: '/dashboard/services', icon: Settings },
+    { name: 'Barbers', href: '/dashboard/barbers', icon: Scissors },
+    { name: 'Services', href: '/dashboard/services', icon: Briefcase },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-    { name: 'Integrations', href: '/dashboard/integrations', icon: Settings },
+    { name: 'Integrations', href: '/dashboard/integrations', icon: Plug },
   ];
 
   return (
@@ -41,7 +46,11 @@ const DashboardLayout = ({ children }) => {
             {/* Left side */}
             <div className="flex items-center">
               <Link to="/dashboard" className="flex items-center">
-                <Calendar className="h-8 w-8 text-blue-600 mr-2" />
+                <img 
+                  src="/images/avella-logo.png" 
+                  alt="Avella AI" 
+                  className="h-10 w-10 mr-2"
+                />
                 <span className="text-xl font-bold text-gray-900">Avella AI</span>
               </Link>
               
