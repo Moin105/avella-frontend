@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTenant } from '../../contexts/TenantContext';
+// Using public folder - no import needed
 import { 
   Calendar, 
   Users, 
@@ -47,7 +48,7 @@ const DashboardLayout = ({ children }) => {
             <div className="flex items-center">
               <Link to="/dashboard" className="flex items-center">
                 <img 
-                  src="/images/avella-logo.png" 
+                  src="/avella-logo.png"
                   alt="Avella AI" 
                   className="h-10 w-10 mr-2"
                 />
